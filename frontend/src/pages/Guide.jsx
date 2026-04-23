@@ -14,7 +14,7 @@ const sections = [
     steps: [
       { 
         title: '1. Tạo tài khoản', 
-        content: 'Truy cập trang đăng ký tại menu góc trên bên phải. Điền đầy đủ họ tên, email và mật khẩu. Bạn có thể chọn vai trò là Học viên (Student) hoặc Giảng viên (Lecturer).'
+        content: 'Truy cập trang đăng ký tại menu góc trên bên phải. Điền đầy đủ họ tên, email và mật khẩu. Bạn có thể chọn vai trò là Học viên (Student) hoặc Giáo viên (Lecturer).'
       },
       { 
         title: '2. Đăng nhập', 
@@ -66,7 +66,7 @@ const sections = [
       },
       { 
         title: 'Ghi chú & Hỏi đáp', 
-        content: 'Ở bên dưới Video, sử dụng tab "Ghi chú" để lưu ghi chú cá nhân riêng tư, hoặc tab "Hỏi đáp (Q&A)" để thảo luận, đặt câu hỏi với giảng viên và học viên khác.'
+        content: 'Ở bên dưới Video, sử dụng tab "Ghi chú" để lưu ghi chú cá nhân riêng tư, hoặc tab "Hỏi đáp (Q&A)" để thảo luận, đặt câu hỏi với giáo viên và học viên khác.'
       },
     ]
   },
@@ -98,7 +98,7 @@ const sections = [
     steps: [
       { 
         title: 'Truy cập Forum', 
-        content: 'Vào mục "Forum" trên Navbar. Đây là không gian thảo luận chung cho tất cả học viên và giảng viên trong hệ thống.'
+        content: 'Vào mục "Forum" trên Navbar. Đây là không gian thảo luận chung cho tất cả học viên và giáo viên trong hệ thống.'
       },
       { 
         title: 'Đọc & Tạo chủ đề', 
@@ -114,11 +114,11 @@ const sections = [
     id: 'lecturer',
     icon: <GraduationCap size={22} />,
     color: '#8b5cf6',
-    title: 'Dành cho Giảng viên',
+    title: 'Dành cho Giáo viên',
     steps: [
       { 
         title: 'Instructor Dashboard', 
-        content: 'Sau khi đăng nhập với tài khoản Giảng viên, vào Dashboard để xem tổng quan: số khóa học, học viên, và doanh thu ước tính.'
+        content: 'Sau khi đăng nhập với tài khoản Giáo viên, vào Dashboard để xem tổng quan: số khóa học, học viên, và doanh thu ước tính.'
       },
       { 
         title: 'Tạo khóa học mới', 
@@ -251,7 +251,7 @@ const Guide = () => {
       {/* Footer CTA */}
       <div className="card" style={{ padding: '2rem', textAlign: 'center', marginTop: '1.5rem', background: 'var(--surface-2)' }}>
         <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.75rem' }}>Cần thêm hỗ trợ?</h3>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Nếu bạn gặp khó khăn, hãy đặt câu hỏi tại diễn đàn cộng đồng — các giảng viên và học viên sẵn sàng giúp đỡ!</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Nếu bạn gặp khó khăn, hãy đặt câu hỏi tại diễn đàn cộng đồng — các giáo viên và học viên sẵn sàng giúp đỡ!</p>
         <a href="/forum" className="btn btn-primary">Đến Diễn đàn</a>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { GraduationCap, UserRound, BookOpen } from 'lucide-react';
 
 const ROLES = [
   { value: 'student', label: 'Học viên', desc: 'Tôi muốn học và phát triển kỹ năng', icon: <UserRound size={20} /> },
-  { value: 'lecturer', label: 'Giảng viên', desc: 'Tôi muốn dạy và tạo khóa học', icon: <BookOpen size={20} /> },
+  { value: 'lecturer', label: 'Giáo viên', desc: 'Tôi muốn dạy và tạo khóa học', icon: <BookOpen size={20} /> },
 ];
 
 const Register = () => {
