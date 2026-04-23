@@ -3,7 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, Edit, Trash2, BarChart2, Book, Users, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, BarChart2, Book, Users, Star, Eye, GraduationCap } from 'lucide-react';
+
+const CATEGORY_LABELS = { Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên & XH', Music: 'Âm nhạc', Arts: 'Mỹ thuật', PE: 'Thể dục' };
+const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 
 const InstructorDashboard = () => {
   const [courses, setCourses] = useState([]);
@@ -21,11 +24,12 @@ const InstructorDashboard = () => {
 
   const fetchCourses = async () => {
     try {
-      // Assuming GET /courses with no filters returns all, but really should filter by lecturer
       const res = await api.get('/courses');
-      const myCourses = res.data.filter(c => c.lecturer_id === user.id);
+      const myCourses = user.role === 'admin'
+        ? res.data
+        : res.data.filter(c => c.lecturer_id === user.id);
       setCourses(myCourses);
-    } catch { } 
+    } catch { }
     finally { setLoading(false); }
   };
 
@@ -46,113 +50,114 @@ const InstructorDashboard = () => {
 
   return (
     <div className="main-content">
-      <div className="page-header" style={{ marginBottom: '2rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">Quản lý giảng dạy</h1>
-          <p className="page-subtitle">Quản lý và theo dõi hiệu suất các khóa học của bạn</p>
+          <p className="page-subtitle">Xin chào, <strong>{user?.name}</strong> — Quản lý và theo dõi các khóa học của bạn</p>
         </div>
-        <div>
-          <Link to="/instructor/course/create" className="btn btn-primary">
-            <Plus size={16} /> Tạo khóa học mới
-          </Link>
+        <Link to="/instructor/course/create" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          <Plus size={16} /> Tạo khóa học mới
+        </Link>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}><Book size={22} /></div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{courses.length}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>Khóa học đã tạo</div>
+          </div>
+        </div>
+        <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ca8a04', flexShrink: 0 }}><Users size={22} /></div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{totalStudents}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>Tổng học sinh</div>
+          </div>
+        </div>
+        <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}><BarChart2 size={22} /></div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>${totalRevenue.toFixed(0)}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>Doanh thu ước tính</div>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}><Book size={28} /></div>
-          <div>
-            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{courses.length}</div>
-            <div style={{ color: 'var(--text-muted)' }}>Khóa học đã tạo</div>
-          </div>
-        </div>
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--warning-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}><Users size={28} /></div>
-          <div>
-            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{totalStudents}</div>
-            <div style={{ color: 'var(--text-muted)' }}>Tổng học viên</div>
-          </div>
-        </div>
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}><BarChart2 size={28} /></div>
-          <div>
-            <div style={{ fontSize: '2rem', fontWeight: 800 }}>${totalRevenue.toFixed(2)}</div>
-            <div style={{ color: 'var(--text-muted)' }}>Doanh thu (Ước tính)</div>
-          </div>
-        </div>
+      {/* Course Cards */}
+      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Danh sách khóa học ({courses.length})</h3>
       </div>
 
-      <div className="card">
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Danh sách khóa học</h3>
+      {courses.length === 0 ? (
+        <div className="card" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <GraduationCap size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+          <p style={{ marginBottom: '1rem' }}>Chưa có khóa học nào.</p>
+          <Link to="/instructor/course/create" className="btn btn-primary"><Plus size={16} /> Tạo khóa học đầu tiên</Link>
         </div>
-        {courses.length === 0 ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            Chưa có khóa học nào. Hãy tạo khóa học đầu tiên của bạn!
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>Khóa học</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>Trạng thái</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>Giá trị</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>Thống kê</th>
-                  <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courses.map(course => (
-                  <tr key={course.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: 80, height: 45, borderRadius: '4px', background: '#e2e8f0', overflow: 'hidden' }}>
-                          {course.thumbnail_url ? <img src={assetUrl(course.thumbnail_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ''}
-                        </div>
-                        <div>
-                          <Link to={`/courses/${course.id}`} style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>{course.title}</Link>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{course.category}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <span className="badge badge-success">Đã xuất bản</span>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 600 }}>{course.price > 0 ? `$${course.price}` : 'Miễn phí'}</div>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.85rem' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Users size={14} /> {course.student_count || 0}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#eab308' }}><Star size={14} fill="currentColor" /> {parseFloat(course.rating || 4).toFixed(1)}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <Link 
-                          to={`/instructor/course/${course.id}/students`} 
-                          className="btn btn-ghost btn-sm" 
-                          style={{ padding: '0.4rem 0.75rem' }}
-                          title="Xem học viên"
-                        >
-                          <Users size={14} />
-                        </Link>
-                        <Link to={`/instructor/course/${course.id}/edit`} className="btn btn-secondary btn-sm" style={{ padding: '0.4rem 0.5rem' }}>
-                          <Edit size={14} />
-                        </Link>
-                        <button className="btn btn-ghost btn-sm" style={{ padding: '0.4rem 0.5rem', color: 'var(--error)' }} onClick={() => handleDelete(course.id)}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+          {courses.map(course => (
+            <div key={course.id} className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Thumbnail */}
+              <div style={{ height: 140, background: 'var(--surface-2)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+                {course.thumbnail_url
+                  ? <img src={assetUrl(course.thumbnail_url)} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><GraduationCap size={40} /></div>
+                }
+                <span className="badge badge-primary" style={{ position: 'absolute', top: 8, left: 8, fontSize: '0.75rem' }}>
+                  {CATEGORY_LABELS[course.category] || course.category}
+                </span>
+                {course.level && (
+                  <span className="badge badge-purple" style={{ position: 'absolute', top: 8, right: 8, fontSize: '0.75rem' }}>
+                    {LEVEL_LABELS[course.level] || course.level}
+                  </span>
+                )}
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <h4 style={{ fontWeight: 700, fontSize: '1rem', margin: 0, lineHeight: 1.4 }}>
+                  <Link to={`/courses/${course.id}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>{course.title}</Link>
+                </h4>
+
+                {/* Lecturer */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  <GraduationCap size={13} />
+                  <span>{course.lecturer_name || user?.name}</span>
+                </div>
+
+                {/* Stats row */}
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.83rem', color: 'var(--text-muted)', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={13} /> {course.student_count || 0} học sinh</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#eab308' }}><Star size={13} fill="currentColor" /><span style={{ color: 'var(--text-muted)' }}>{parseFloat(course.rating || 0).toFixed(1)}</span></span>
+                  <span style={{ marginLeft: 'auto', fontWeight: 600, color: course.price > 0 ? 'var(--primary)' : '#16a34a' }}>
+                    {course.price > 0 ? `$${course.price}` : 'Miễn phí'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
+                <Link to={`/courses/${course.id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Xem">
+                  <Eye size={14} /> Xem
+                </Link>
+                <Link to={`/instructor/course/${course.id}/students`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Học sinh">
+                  <Users size={14} /> Học sinh
+                </Link>
+                <Link to={`/instructor/course/${course.id}/edit`} className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Edit size={14} /> Sửa
+                </Link>
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)', padding: '0.4rem 0.6rem' }} onClick={() => handleDelete(course.id)} title="Xóa">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
