@@ -5,10 +5,10 @@ import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { FileEdit, List, DollarSign, CheckCircle, ArrowLeft, Upload, Plus, Trash2, X, Video, File, FileText, ClipboardList, Calendar, Copy, ChevronLeft, ChevronRight, Eye, Save, CheckCircle2, AlertCircle, GripVertical, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
 
-const CATEGORIES = ['General', 'Technology', 'Business', 'Design', 'Science', 'Language', 'Arts'];
-const CATEGORY_LABELS = { General: 'Chung', Technology: 'Công nghệ', Business: 'Kinh doanh', Design: 'Thiết kế', Science: 'Khoa học', Language: 'Ngôn ngữ', Arts: 'Nghệ thuật' };
-const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
-const LEVEL_LABELS = { Beginner: 'Cơ bản', Intermediate: 'Trung cấp', Advanced: 'Nâng cao' };
+const CATEGORIES = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Music', 'Arts', 'PE'];
+const CATEGORY_LABELS = { All: 'Tất cả', Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên và Xã hội', Music: 'Âm nhạc', Arts: 'Mỹ thuật', PE: 'Thể dục' };
+const LEVELS = ['Semester1', 'Semester2'];
+const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 
 const CourseEditor = () => {
   const { id } = useParams();
@@ -23,7 +23,7 @@ const CourseEditor = () => {
 
   // Form State
   const [course, setCourse] = useState({
-    title: '', description: '', category: 'General', price: 0, level: 'Beginner', thumbnail_url: ''
+    title: '', description: '', category: 'Math', price: 0, level: 'Semester1', thumbnail_url: ''
   });
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);

@@ -5,11 +5,11 @@ import { AuthContext } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, BookOpen, Users, GraduationCap, Star, Filter } from 'lucide-react';
 
-const CATEGORIES = ['Tất cả', 'Chung', 'Công nghệ', 'Kinh doanh', 'Thiết kế', 'Khoa học', 'Ngôn ngữ', 'Nghệ thuật'];
-const CATEGORIES_VAL = ['All', 'General', 'Technology', 'Business', 'Design', 'Science', 'Language', 'Arts'];
-const LEVELS = ['Tất cả', 'Cơ bản', 'Trung cấp', 'Nâng cao'];
-const LEVELS_VAL = ['All', 'Beginner', 'Intermediate', 'Advanced'];
-const LEVEL_LABELS = { Beginner: 'Cơ bản', Intermediate: 'Trung cấp', Advanced: 'Nâng cao' };
+const CATEGORIES = ['Tất cả', 'Toán', 'Tiếng Việt', 'Tiếng Anh', 'Đạo đức', 'Tự nhiên và Xã hội', 'Âm nhạc', 'Mỹ thuật', 'Thể dục'];
+const CATEGORIES_VAL = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Music', 'Arts', 'PE'];
+const LEVELS = ['Tất cả', 'Học kỳ 1', 'Học kỳ 2'];
+const LEVELS_VAL = ['All', 'Semester1', 'Semester2'];
+const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 
 const CourseList = () => {
   const [courses, setCourses] = useState([]);
@@ -71,7 +71,7 @@ const CourseList = () => {
             
             {/* Category Filter */}
             <div className="filter-group" style={{ marginBottom: '1.5rem' }}>
-              <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Chủ đề</h4>
+              <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Môn học</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {CATEGORIES.map((label, i) => (
                   <label key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
@@ -84,7 +84,7 @@ const CourseList = () => {
 
             {/* Level Filter */}
             <div className="filter-group" style={{ marginBottom: '1.5rem' }}>
-              <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Cấp độ</h4>
+              <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Học kỳ</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {LEVELS.map((label, i) => (
                   <label key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
