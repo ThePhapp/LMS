@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
 import { Confetti, FunProgressBar, LessonCompleteToast } from '../components/FunElements';
+import LessonAiChat from '../components/LessonAiChat';
 
 function getYoutubeId(url) {
   if (!url) return null;
@@ -330,6 +331,7 @@ const CourseLearning = () => {
                     <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Tổng quan</button>
                     {user?.role === 'student' && <button className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Ghi chú</button>}
                     <button className={`tab ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Hỏi đáp (Q&A)</button>
+                    <button className={`tab ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Học Cùng AI</button>
                   </div>
 
                   <div className="tab-content" style={{ marginTop: '1.5rem', minHeight: '300px' }}>
@@ -346,6 +348,9 @@ const CourseLearning = () => {
                         </div>
                         <textarea className="form-textarea" rows="8" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Nhập ghi chú của bạn..." />
                       </div>
+                    )}
+                    {activeTab === 'ai' && (
+                      <LessonAiChat lesson={activeLesson} course={course} />
                     )}
                     {activeTab === 'comments' && (
                       <div className="card" style={{ padding: '1.5rem' }}>
