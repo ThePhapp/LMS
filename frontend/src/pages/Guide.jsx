@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { 
   BookOpen, GraduationCap, Calendar, MessageSquare, 
-  PlayCircle, Upload, CheckCircle2, ChevronDown, 
-  ChevronRight, Star, Users, HelpCircle, Zap
+  PlayCircle, CheckCircle2, ChevronRight, Star, Users, HelpCircle, Zap
 } from 'lucide-react';
 
 const sections = [

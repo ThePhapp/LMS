@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api, { assetUrl } from '../services/api';
+import api from '../services/api';
+import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { ArrowLeft, Download, Link2 } from 'lucide-react';
+import {
+  FileText, FileVideo, Circle, ArrowLeft, Download, Link2, BookOpen, ClipboardList, Check
+} from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
-import { Confetti, LessonCompleteToast } from '../components/FunElements';
+import { Confetti, FunProgressBar, LessonCompleteToast } from '../components/FunElements';
 import LessonAiChat from '../components/LessonAiChat';
 
 function getYoutubeId(url) {
@@ -22,6 +25,12 @@ function timeAgo(dateStr) {
   if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
   if (diff < 2592000) return `${Math.floor(diff / 86400)} ngày trước`;
   return d.toLocaleDateString('vi-VN');
+}
+
+function LessonTypeIcon({ lesson }) {
+  if (lesson.video_url || lesson.file_type === 'video') return <FileVideo size={14} color="var(--accent)" />;
+  if (lesson.file_url) return <FileText size={14} color="var(--warning)" />;
+  return <BookOpen size={14} color="var(--primary)" />;
 }
 
 const CourseLearning = () => {
@@ -146,13 +155,7 @@ const CourseLearning = () => {
     } catch { }
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 70px)', background: 'linear-gradient(180deg,#FFF9FE,#F0F7FF)', gap: '1rem' }}>
-      <div style={{ fontSize: '3rem', animation: 'miuBob 1.2s ease-in-out infinite' }}>🐱</div>
-      <p style={{ fontWeight: 800, fontSize: '1.1rem', color: '#FF6B9D' }}>Miu đang tải bài học...</p>
-      <style>{`@keyframes miuBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
-    </div>
-  );
+  if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải bài học...</p></div>;
   if (!course) return null;
 
   const lessons = course.lessons || [];
@@ -160,134 +163,76 @@ const CourseLearning = () => {
   const progressPct = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
   const ytId = activeLesson ? getYoutubeId(activeLesson.video_url) : null;
 
-  /* ---- helpers ---- */
-  const CUTE_TAB_STYLE = (key) => ({
-    padding: '0.55rem 1.1rem',
-    borderRadius: 20,
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: 700,
-    fontSize: '0.88rem',
-    transition: 'all 0.18s',
-    display: 'flex', alignItems: 'center', gap: 5,
-    background: activeTab === key ? 'linear-gradient(135deg,#FF6B9D,#FF8E53)' : '#fff',
-    color: activeTab === key ? '#fff' : '#999',
-    boxShadow: activeTab === key ? '0 4px 12px rgba(255,107,157,0.35)' : '0 1px 4px rgba(0,0,0,0.08)',
-  });
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', fontFamily: '"Nunito","Segoe UI",sans-serif' }}>
-
-      {/* ===== TOP BAR ===== */}
-      <div style={{
-        background: 'linear-gradient(135deg,#FF6B9D 0%,#FF8E53 50%,#FFD93D 100%)',
-        color: '#fff', padding: '0.75rem 1.5rem',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        flexShrink: 0, position: 'relative', overflow: 'hidden',
-      }}>
-        {/* decorative stars */}
-        {['⭐','✨','🌟','💫','⭐'].map((s,i) => (
-          <span key={i} style={{ position:'absolute', top: i%2===0?4:14, left:`${8+i*18}%`, fontSize:'0.8rem', opacity:0.5, pointerEvents:'none' }}>{s}</span>
-        ))}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', zIndex: 1 }}>
-          <button
-            onClick={() => navigate(`/courses/${id}`)}
-            style={{ background:'rgba(255,255,255,0.25)', border:'2px solid rgba(255,255,255,0.4)', borderRadius:20, color:'#fff', cursor:'pointer', padding:'0.3rem 0.875rem', fontWeight:700, fontSize:'0.85rem', display:'flex', alignItems:'center', gap:5 }}
-          >
-            <ArrowLeft size={15}/> Quay lại
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
+      {/* Top Navbar Context */}
+      <div style={{ background: '#1e293b', color: '#fff', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button className="btn btn-ghost" style={{ color: '#94a3b8', padding: '0.25rem' }} onClick={() => navigate(`/courses/${id}`)}>
+            <ArrowLeft size={18} />
           </button>
-          <div style={{ fontWeight: 900, fontSize: '1.1rem', textShadow:'0 1px 4px rgba(0,0,0,0.12)' }}>
-            📚 {course.title}
-          </div>
+          <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{course.title}</div>
         </div>
+        
         {user?.role === 'student' && (
-          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', minWidth:280, zIndex:1 }}>
-            <span style={{ fontSize:'0.8rem', fontWeight:700, opacity:0.9, whiteSpace:'nowrap' }}>
-              🏆 {completedCount}/{lessons.length} bài
-            </span>
-            <div style={{ flex:1, height:12, background:'rgba(255,255,255,0.3)', borderRadius:10, overflow:'hidden' }}>
-              <div style={{ height:'100%', width:`${progressPct}%`, background:'#fff', borderRadius:10, transition:'width 0.5s ease', boxShadow:'0 0 8px rgba(255,255,255,0.6)' }} />
-            </div>
-            <span style={{ fontSize:'0.8rem', fontWeight:900, opacity:0.95 }}>{progressPct}%</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '300px' }}>
+            <FunProgressBar pct={progressPct} />
           </div>
         )}
       </div>
 
-      {/* ===== MAIN LAYOUT ===== */}
-      <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
-
-        {/* ===== LEFT: CONTENT ===== */}
-        <div style={{ flex:1, overflowY:'auto', background:'linear-gradient(180deg,#FFF9FE 0%,#F5F0FF 100%)', padding:'1.75rem 2rem' }}>
+      {/* Main Split Layout */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        
+        {/* Left: Content Player (70%) */}
+        <div style={{ flex: '1', overflowY: 'auto', background: 'var(--bg)', padding: '2rem' }}>
           {activeLesson ? (
-            <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
-
-              {/* Lesson title card */}
-              <div style={{
-                background:'linear-gradient(135deg,#FFE4F0,#FFF0D6)',
-                border:'2px solid #FFB3D9', borderRadius:20,
-                padding:'1rem 1.5rem', marginBottom:'1.5rem',
-                display:'flex', justifyContent:'space-between', alignItems:'center',
-                boxShadow:'0 4px 16px rgba(255,107,157,0.1)',
-              }}>
+            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+              
+              {/* Content Header */}
+              <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize:'0.75rem', fontWeight:700, color:'#FF6B9D', marginBottom:4, letterSpacing:0.5 }}>
-                    📖 BÀI HỌC
-                  </div>
-                  <h2 style={{ fontSize:'1.5rem', fontWeight:900, color:'#333', margin:0 }}>
-                    {activeLesson.title}
-                  </h2>
+                  <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{activeLesson.title}</h2>
                 </div>
                 {user?.role === 'student' && activeLesson.item_type !== 'assignment' && (
-                  <button
-                    onClick={() => toggleProgress(activeLesson.id, progress[activeLesson.id])}
-                    style={{
-                      background: progress[activeLesson.id]
-                        ? 'linear-gradient(135deg,#43e97b,#38f9d7)'
-                        : 'linear-gradient(135deg,#FF6B9D,#FF8E53)',
-                      border:'none', borderRadius:20, color:'#fff',
-                      padding:'0.6rem 1.25rem', fontWeight:800, fontSize:'0.9rem',
-                      cursor:'pointer', whiteSpace:'nowrap', flexShrink:0,
-                      boxShadow: progress[activeLesson.id]
-                        ? '0 4px 14px rgba(67,233,123,0.4)'
-                        : '0 4px 14px rgba(255,107,157,0.4)',
-                      transition:'all 0.2s',
-                    }}
-                  >
-                    {progress[activeLesson.id] ? '✅ Xong rồi!' : '🎯 Hoàn thành!'}
-                  </button>
+                    <button
+                      className={`btn ${progress[activeLesson.id] ? 'btn-success' : 'btn-secondary'}`}
+                      style={progress[activeLesson.id] ? {} : { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#fff', border: 'none' }}
+                      onClick={() => toggleProgress(activeLesson.id, progress[activeLesson.id])}>
+                      {progress[activeLesson.id]
+                          ? <>✅ Đã hoàn thành!</>
+                          : <>🎯 Đánh dấu hoàn thành</>}
+                    </button>
                 )}
               </div>
 
-              {/* ---- VIEWERS ---- */}
+              {/* Viewers */}
               {activeLesson.item_type === 'assignment' ? (
-                <div style={{ background:'#fff', border:'2px solid #FFB3D9', borderRadius:20, padding:'1.5rem', boxShadow:'0 4px 16px rgba(255,107,157,0.08)' }}>
+                <div className="card" style={{ padding: '1.5rem' }}>
                   <AssignmentViewer assignment={activeLesson} onSubmissionSuccess={() => fetchFullAssignment(activeLesson.id)} />
                 </div>
               ) : (
                 <>
                   {ytId && (
-                    <div className="video-embed" style={{ borderRadius:20, overflow:'hidden', boxShadow:'0 8px 30px rgba(255,107,157,0.2)', border:'3px solid #FFB3D9', marginBottom:'1.5rem' }}>
-                      <iframe src={`https://www.youtube.com/embed/${ytId}`} allowFullScreen title={activeLesson.title} style={{ border:'none' }} />
+                    <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)' }}>
+                      <iframe src={`https://www.youtube.com/embed/${ytId}`} allowFullScreen style={{ border: 'none' }} />
                     </div>
                   )}
 
                   {!ytId && activeLesson.file_type === 'video' && activeLesson.file_url && (
-                    <div className="video-embed" style={{ borderRadius:20, overflow:'hidden', boxShadow:'0 8px 30px rgba(255,107,157,0.2)', border:'3px solid #FFB3D9', marginBottom:'1.5rem' }}>
-                      <video controls style={{ width:'100%', height:'100%' }}>
+                    <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)' }}>
+                      <video controls style={{ width: '100%', height: '100%' }}>
                         <source src={assetUrl(activeLesson.file_url)} />
                       </video>
                     </div>
                   )}
 
                   {activeLesson.video_url && !ytId && (
-                    <div style={{ background:'#E0F7FA', border:'2px solid #80DEEA', borderRadius:16, padding:'1rem 1.25rem', marginBottom:'1.5rem', display:'flex', alignItems:'center', gap:'1rem' }}>
-                      <span style={{ fontSize:'2rem' }}>🎬</span>
+                    <div className="doc-preview" style={{ marginBottom: '1.5rem' }}>
+                      <div className="doc-icon" style={{ background: '#CFFAFE' }}>🎬</div>
                       <div>
-                        <div style={{ fontWeight:700, marginBottom:4, color:'#006064' }}>Video bên ngoài</div>
-                        <a href={activeLesson.video_url} target="_blank" rel="noopener noreferrer"
-                          style={{ background:'#006064', color:'#fff', padding:'0.35rem 1rem', borderRadius:20, textDecoration:'none', fontWeight:700, fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:5 }}>
-                          <Link2 size={13}/> Mở Video
-                        </a>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>Liên kết Video ngoài</div>
+                        <a href={activeLesson.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm"><Link2 size={13} /> Mở Video</a>
                       </div>
                     </div>
                   )}
@@ -295,18 +240,28 @@ const CourseLearning = () => {
                   {activeLesson.file_url && activeLesson.file_type !== 'video' && (
                     <>
                       {activeLesson.file_type === 'pdf' ? (
-                        <div style={{ marginBottom:'1.5rem' }}>
-                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-                            <div style={{ fontWeight:700, fontSize:'1rem', color:'#e53e3e' }}>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <div style={{ fontWeight: 600, fontSize: '1rem' }}>
                               📄 {activeLesson.file_name || 'Tài liệu PDF'}
                             </div>
-                            <a href={assetUrl(activeLesson.file_url)} download
-                              style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', padding:'0.35rem 1rem', borderRadius:20, textDecoration:'none', fontWeight:700, fontSize:'0.82rem', display:'inline-flex', alignItems:'center', gap:5 }}>
-                              <Download size={13}/> Tải xuống
+                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm">
+                              <Download size={13} /> Tải xuống
                             </a>
                           </div>
-                          <div style={{ width:'100%', height:'600px', border:'2px solid #FFB3D9', borderRadius:16, overflow:'hidden', boxShadow:'0 8px 24px rgba(255,107,157,0.12)' }}>
-                            <iframe src={`${assetUrl(activeLesson.file_url)}#view=FitH`} style={{ width:'100%', height:'100%', border:'none' }} title="PDF Viewer" />
+                          <div style={{ 
+                            width: '100%', 
+                            height: '600px', 
+                            border: '1px solid var(--border)', 
+                            borderRadius: 'var(--radius)',
+                            overflow: 'hidden',
+                            boxShadow: 'var(--shadow-lg)'
+                          }}>
+                            <iframe 
+                              src={`${assetUrl(activeLesson.file_url)}#view=FitH`}
+                              style={{ width: '100%', height: '100%', border: 'none' }}
+                              title="PDF Viewer"
+                            />
                           </div>
                         </div>
                       ) : (['pptx','ppt','docx','doc','xlsx','xls'].includes(activeLesson.file_type) || /\.(pptx?|docx?|xlsx?)$/i.test(activeLesson.file_url)) ? (() => {
@@ -318,37 +273,52 @@ const CourseLearning = () => {
                         const label = isPpt ? 'Bài trình chiếu' : isDoc ? 'Tài liệu Word' : 'Bảng tính Excel';
                         const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
                         return (
-                          <div style={{ marginBottom:'1.5rem' }}>
-                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-                              <div style={{ fontWeight:700, fontSize:'1rem' }}>{icon} {activeLesson.file_name || label}</div>
-                              <a href={fullUrl} download
-                                style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', padding:'0.35rem 1rem', borderRadius:20, textDecoration:'none', fontWeight:700, fontSize:'0.82rem', display:'inline-flex', alignItems:'center', gap:5 }}>
-                                <Download size={13}/> Tải xuống
+                          <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                              <div style={{ fontWeight: 600, fontSize: '1rem' }}>
+                                {icon} {activeLesson.file_name || label}
+                              </div>
+                              <a href={fullUrl} download className="btn btn-secondary btn-sm">
+                                <Download size={13} /> Tải xuống
                               </a>
                             </div>
                             {isLocal ? (
-                              <div style={{ background:'#FEF3C7', border:'2px solid #F59E0B', borderRadius:16, padding:'1.25rem', display:'flex', gap:'1rem', alignItems:'center' }}>
-                                <span style={{ fontSize:'2rem' }}>{icon}</span>
-                                <div>
-                                  <div style={{ fontWeight:700, marginBottom:4 }}>Xem trước không khả dụng trên localhost</div>
-                                  <div style={{ fontSize:'0.85rem', color:'#92400E' }}>Cần triển khai lên server. Hãy tải xuống để xem trên máy.</div>
+                              <div className="doc-preview" style={{ background: '#FEF3C7', border: '1px solid #F59E0B', padding: '1.25rem' }}>
+                                <div className="doc-icon" style={{ background: '#FDE68A', fontSize: '1.5rem' }}>{icon}</div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Xem trước không khả dụng trên localhost</div>
+                                  <div style={{ fontSize: '0.85rem', color: '#92400E', marginBottom: 8 }}>
+                                    Cần triển khai lên server để xem trực tuyến. Hãy tải xuống để xem trên máy.
+                                  </div>
                                 </div>
                               </div>
                             ) : (
-                              <div style={{ width:'100%', height:'700px', border:'2px solid #FFB3D9', borderRadius:16, overflow:'hidden', boxShadow:'0 8px 24px rgba(255,107,157,0.12)', background:'#f1f5f9' }}>
-                                <iframe src={officeViewerUrl} style={{ width:'100%', height:'100%', border:'none' }} title={label} allowFullScreen />
+                              <div style={{
+                                width: '100%',
+                                height: '700px',
+                                border: '1px solid var(--border)',
+                                borderRadius: 'var(--radius)',
+                                overflow: 'hidden',
+                                boxShadow: 'var(--shadow-lg)',
+                                background: '#f1f5f9'
+                              }}>
+                                <iframe
+                                  src={officeViewerUrl}
+                                  style={{ width: '100%', height: '100%', border: 'none' }}
+                                  title={label}
+                                  allowFullScreen
+                                />
                               </div>
                             )}
                           </div>
                         );
                       })() : (
-                        <div style={{ background:'#EDE9FE', border:'2px solid #c4b5fd', borderRadius:16, padding:'1rem 1.25rem', marginBottom:'1.5rem', display:'flex', alignItems:'center', gap:'1rem' }}>
-                          <span style={{ fontSize:'2rem' }}>📝</span>
-                          <div style={{ flex:1 }}>
-                            <div style={{ fontWeight:700, marginBottom:4 }}>{activeLesson.file_name || 'Tài liệu'}</div>
-                            <a href={assetUrl(activeLesson.file_url)} download
-                              style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', padding:'0.35rem 1rem', borderRadius:20, textDecoration:'none', fontWeight:700, fontSize:'0.82rem', display:'inline-flex', alignItems:'center', gap:5 }}>
-                              <Download size={13}/> Tải xuống
+                        <div className="doc-preview">
+                          <div className="doc-icon" style={{ background: '#EDE9FE' }}>📝</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{activeLesson.file_name || 'Tài liệu'}</div>
+                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm">
+                              <Download size={13} /> Tải xuống
                             </a>
                           </div>
                         </div>
@@ -356,146 +326,113 @@ const CourseLearning = () => {
                     </>
                   )}
 
-                  {/* ---- CUTE TABS ---- */}
-                  <div style={{ marginTop:'2rem', display:'flex', flexWrap:'wrap', gap:'0.5rem', padding:'0.75rem', background:'#fff', borderRadius:20, border:'2px solid #FFE4F0', boxShadow:'0 2px 8px rgba(255,107,157,0.08)' }}>
-                    <button style={CUTE_TAB_STYLE('overview')} onClick={() => setActiveTab('overview')}>📖 Tổng quan</button>
-                    {user?.role === 'student' && <button style={CUTE_TAB_STYLE('notes')} onClick={() => setActiveTab('notes')}>📝 Ghi chú</button>}
-                    <button style={CUTE_TAB_STYLE('comments')} onClick={() => setActiveTab('comments')}>💬 Hỏi đáp</button>
-                    <button style={CUTE_TAB_STYLE('ai')} onClick={() => setActiveTab('ai')}>🐱 Học Cùng Miu</button>
+                  {/* Context Tabs */}
+                  <div className="tabs" style={{ marginTop: '2rem', borderBottom: '1px solid var(--border)' }}>
+                    <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Tổng quan</button>
+                    {user?.role === 'student' && <button className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Ghi chú</button>}
+                    <button className={`tab ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Hỏi đáp (Q&A)</button>
+                    <button className={`tab ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Học Cùng AI</button>
                   </div>
 
-                  <div style={{ marginTop:'1.25rem', minHeight:'300px' }}>
-
-                    {/* Overview */}
+                  <div className="tab-content" style={{ marginTop: '1.5rem', minHeight: '300px' }}>
                     {activeTab === 'overview' && (
-                      <div style={{ background:'#fff', border:'2px solid #FFE4F0', borderRadius:20, padding:'1.5rem', boxShadow:'0 4px 16px rgba(255,107,157,0.06)', fontSize:'1rem', lineHeight:1.9, color:'#444', whiteSpace:'pre-wrap' }}>
-                        {activeLesson.content || (
-                          <div style={{ textAlign:'center', padding:'2rem', color:'#ccc' }}>
-                            <div style={{ fontSize:'2.5rem', marginBottom:'0.5rem' }}>📭</div>
-                            <div style={{ fontWeight:700 }}>Chưa có mô tả cho bài học này.</div>
-                          </div>
-                        )}
+                      <div style={{ fontSize: '1rem', lineHeight: 1.8, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                        {activeLesson.content || <div style={{ color: 'var(--text-muted)' }}>Chưa có mô tả cho bài học này.</div>}
                       </div>
                     )}
-
-                    {/* Notes */}
                     {activeTab === 'notes' && user?.role === 'student' && (
-                      <div style={{ background:'#fff', border:'2px solid #FFE4F0', borderRadius:20, padding:'1.5rem', boxShadow:'0 4px 16px rgba(255,107,157,0.06)' }}>
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
-                          <p style={{ fontSize:'0.9rem', color:'#aaa', fontWeight:600 }}>📓 Ghi chú riêng tư của bạn</p>
-                          <button
-                            onClick={saveNotes}
-                            style={{ background:'linear-gradient(135deg,#FF6B9D,#FF8E53)', border:'none', borderRadius:20, color:'#fff', padding:'0.4rem 1rem', fontWeight:800, fontSize:'0.85rem', cursor:'pointer', boxShadow:'0 3px 10px rgba(255,107,157,0.3)' }}
-                          >
-                            💾 Lưu ghi chú
-                          </button>
+                      <div className="card" style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Ghi chú riêng tư cho bài học này.</p>
+                          <button className="btn btn-primary btn-sm" onClick={saveNotes}>Lưu ghi chú</button>
                         </div>
-                        <textarea
-                          rows={8}
-                          value={notes}
-                          onChange={e => setNotes(e.target.value)}
-                          placeholder="Viết ghi chú của bạn vào đây nhé... ✏️"
-                          style={{ width:'100%', border:'2px solid #FFD6E8', borderRadius:14, padding:'0.875rem 1rem', fontSize:'0.95rem', fontFamily:'inherit', outline:'none', resize:'vertical', background:'#FFF9FE', color:'#333', lineHeight:1.7, boxSizing:'border-box' }}
-                        />
+                        <textarea className="form-textarea" rows="8" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Nhập ghi chú của bạn..." />
                       </div>
                     )}
-
-                    {/* AI Chat */}
                     {activeTab === 'ai' && (
                       <LessonAiChat lesson={activeLesson} course={course} />
                     )}
-
-                    {/* Comments */}
                     {activeTab === 'comments' && (
-                      <div style={{ background:'#fff', border:'2px solid #FFE4F0', borderRadius:20, padding:'1.5rem', boxShadow:'0 4px 16px rgba(255,107,157,0.06)' }}>
+                      <div className="card" style={{ padding: '1.5rem' }}>
                         {/* Write comment */}
-                        <div style={{ display:'flex', gap:'0.75rem', alignItems:'center', marginBottom:'1.5rem' }}>
-                          <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,#FF6B9D,#FF8E53)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'1rem', flexShrink:0, boxShadow:'0 3px 8px rgba(255,107,157,0.3)' }}>
-                            {user?.name?.[0]?.toUpperCase() || '👦'}
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
+                            {user?.name?.[0]?.toUpperCase() || 'U'}
                           </div>
-                          <form onSubmit={submitComment} style={{ flex:1, display:'flex', gap:'0.5rem', alignItems:'center' }}>
+                          <form onSubmit={submitComment} style={{ flex: 1, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <input
                               type="text"
+                              className="form-input"
+                              style={{ flex: 1, borderRadius: '20px', padding: '0.5rem 1rem' }}
                               value={newComment}
                               onChange={e => setNewComment(e.target.value)}
-                              placeholder="Hỏi gì đó đi bạn ơi! 🙋"
-                              style={{ flex:1, border:'2px solid #FFD6E8', borderRadius:20, padding:'0.55rem 1rem', fontSize:'0.92rem', outline:'none', fontFamily:'inherit', background:'#FFF9FE', color:'#333' }}
+                              placeholder="Viết bình luận..."
                             />
                             {newComment.trim() && (
-                              <button type="submit"
-                                style={{ background:'linear-gradient(135deg,#FF6B9D,#FF8E53)', border:'none', borderRadius:20, color:'#fff', padding:'0.55rem 1.1rem', fontWeight:800, fontSize:'0.85rem', cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 3px 10px rgba(255,107,157,0.3)' }}>
-                                Gửi 🚀
-                              </button>
+                              <button type="submit" className="btn btn-primary btn-sm" style={{ borderRadius: '20px', whiteSpace: 'nowrap' }}>Gửi</button>
                             )}
                           </form>
                         </div>
                         {/* Comments list */}
-                        <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                           {comments.filter(c => !c.parent_id).map(c => {
                             const replies = comments.filter(r => r.parent_id === c.id);
                             const isReplying = replyingTo === c.id;
-                            const colors = ['#FF6B9D','#FF8E53','#FFD93D','#6BCB77','#4D96FF'];
-                            const color = colors[c.user_name.charCodeAt(0) % colors.length];
                             return (
                               <div key={c.id}>
-                                <div style={{ display:'flex', gap:'0.6rem', alignItems:'flex-start' }}>
-                                  <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,${color},${color}aa)`, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'0.95rem', flexShrink:0, boxShadow:`0 3px 8px ${color}40` }}>
+                                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
                                     {c.user_name[0].toUpperCase()}
                                   </div>
-                                  <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ background:'#FFF9FE', border:'2px solid #FFE4F0', borderRadius:'0 16px 16px 16px', padding:'0.65rem 1rem', display:'inline-block', maxWidth:'100%' }}>
-                                      <div style={{ fontWeight:800, fontSize:'0.85rem', color, marginBottom:2 }}>{c.user_name}</div>
-                                      <div style={{ fontSize:'0.95rem', color:'#444' }}>{c.content}</div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ background: 'var(--bg)', borderRadius: '12px', padding: '0.6rem 0.875rem', display: 'inline-block', maxWidth: '100%' }}>
+                                      <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 2 }}>{c.user_name}</div>
+                                      <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>{c.content}</div>
                                     </div>
-                                    <div style={{ display:'flex', gap:'1rem', marginTop:'0.3rem', paddingLeft:'0.5rem', alignItems:'center' }}>
-                                      <span style={{ fontSize:'0.73rem', color:'#bbb', fontWeight:600 }}>{timeAgo(c.created_at)}</span>
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', paddingLeft: '0.5rem', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{timeAgo(c.created_at)}</span>
                                       <button
-                                        style={{ background:'none', border:'none', cursor:'pointer', fontSize:'0.75rem', fontWeight:800, color: isReplying ? '#FF6B9D' : '#ccc', padding:0 }}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, color: isReplying ? 'var(--primary)' : 'var(--text-muted)', padding: 0 }}
                                         onClick={() => { setReplyingTo(isReplying ? null : c.id); setReplyContent(''); }}
-                                      >💬 Phản hồi</button>
+                                      >Phản hồi</button>
                                     </div>
                                     {/* Replies */}
                                     {replies.length > 0 && (
-                                      <div style={{ marginTop:'0.75rem', marginLeft:'0.75rem', display:'flex', flexDirection:'column', gap:'0.6rem', borderLeft:'3px solid #FFD6E8', paddingLeft:'0.75rem' }}>
-                                        {replies.map(r => {
-                                          const rc = colors[r.user_name.charCodeAt(0) % colors.length];
-                                          return (
-                                            <div key={r.id} style={{ display:'flex', gap:'0.5rem', alignItems:'flex-start' }}>
-                                              <div style={{ width:32, height:32, borderRadius:'50%', background:`linear-gradient(135deg,${rc},${rc}aa)`, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'0.82rem', flexShrink:0 }}>
-                                                {r.user_name[0].toUpperCase()}
-                                              </div>
-                                              <div style={{ flex:1 }}>
-                                                <div style={{ background:'#FFF0F6', border:'2px solid #FFD6E8', borderRadius:'0 14px 14px 14px', padding:'0.5rem 0.875rem', display:'inline-block', maxWidth:'100%' }}>
-                                                  <div style={{ fontWeight:800, fontSize:'0.8rem', color:rc, marginBottom:2 }}>{r.user_name}</div>
-                                                  <div style={{ fontSize:'0.9rem', color:'#444' }}>{r.content}</div>
-                                                </div>
-                                                <div style={{ fontSize:'0.7rem', color:'#bbb', marginTop:'0.2rem', paddingLeft:'0.5rem', fontWeight:600 }}>{timeAgo(r.created_at)}</div>
-                                              </div>
+                                      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                        {replies.map(r => (
+                                          <div key={r.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
+                                              {r.user_name[0].toUpperCase()}
                                             </div>
-                                          );
-                                        })}
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              <div style={{ background: 'var(--bg)', borderRadius: '12px', padding: '0.5rem 0.875rem', display: 'inline-block', maxWidth: '100%' }}>
+                                                <div style={{ fontWeight: 700, fontSize: '0.83rem', marginBottom: 2 }}>{r.user_name}</div>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{r.content}</div>
+                                              </div>
+                                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', paddingLeft: '0.5rem' }}>{timeAgo(r.created_at)}</div>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     )}
                                     {/* Reply input */}
                                     {isReplying && (
-                                      <div style={{ display:'flex', gap:'0.5rem', marginTop:'0.75rem', alignItems:'center', marginLeft:'0.75rem' }}>
-                                        <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#FF6B9D,#FF8E53)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'0.82rem', flexShrink:0 }}>
-                                          {user?.name?.[0]?.toUpperCase() || '😊'}
+                                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
+                                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
+                                          {user?.name?.[0]?.toUpperCase() || 'U'}
                                         </div>
-                                        <form onSubmit={(e) => submitReply(e, c.id)} style={{ flex:1, display:'flex', gap:'0.5rem', alignItems:'center' }}>
+                                        <form onSubmit={(e) => submitReply(e, c.id)} style={{ flex: 1, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                           <input
                                             type="text"
+                                            className="form-input"
+                                            style={{ flex: 1, borderRadius: '20px', padding: '0.4rem 0.875rem', fontSize: '0.9rem' }}
                                             value={replyContent}
                                             onChange={e => setReplyContent(e.target.value)}
-                                            placeholder={`Phản hồi ${c.user_name}... 💬`}
+                                            placeholder={`Phản hồi ${c.user_name}...`}
                                             autoFocus
-                                            style={{ flex:1, border:'2px solid #FFD6E8', borderRadius:20, padding:'0.4rem 0.875rem', fontSize:'0.88rem', outline:'none', fontFamily:'inherit', background:'#FFF9FE' }}
                                           />
                                           {replyContent.trim() && (
-                                            <button type="submit"
-                                              style={{ background:'linear-gradient(135deg,#FF6B9D,#FF8E53)', border:'none', borderRadius:20, color:'#fff', padding:'0.4rem 0.875rem', fontWeight:800, fontSize:'0.82rem', cursor:'pointer', whiteSpace:'nowrap' }}>
-                                              Gửi 🚀
-                                            </button>
+                                            <button type="submit" className="btn btn-primary btn-sm" style={{ borderRadius: '20px', whiteSpace: 'nowrap' }}>Gửi</button>
                                           )}
                                         </form>
                                       </div>
@@ -506,44 +443,23 @@ const CourseLearning = () => {
                             );
                           })}
                           {comments.filter(c => !c.parent_id).length === 0 && (
-                            <div style={{ textAlign:'center', padding:'2rem 0', color:'#ccc' }}>
-                              <div style={{ fontSize:'2rem', marginBottom:'0.5rem' }}>🙋</div>
-                              <div style={{ fontWeight:700 }}>Chưa có câu hỏi nào. Hãy là người đầu tiên hỏi!</div>
-                            </div>
+                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>Chưa có thảo luận nào. Hãy đặt câu hỏi!</div>
                           )}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* ---- NAV BUTTONS ---- */}
-                  <div style={{ display:'flex', justifyContent:'space-between', marginTop:'2.5rem', paddingTop:'1.5rem', borderTop:'2px dashed #FFD6E8' }}>
+                  {/* Nav Buttons below video */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
                     {(() => {
                       const idx = lessons.findIndex(l => l.id === activeLesson.id);
                       const prev = lessons[idx - 1];
                       const next = lessons[idx + 1];
                       return (
                         <>
-                          {prev ? (
-                            <button
-                              onClick={() => setActiveLesson(prev)}
-                              style={{ background:'#fff', border:'2px solid #FFB3D9', borderRadius:20, color:'#FF6B9D', padding:'0.6rem 1.25rem', fontWeight:800, fontSize:'0.9rem', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}
-                            >
-                              ← {prev.title}
-                            </button>
-                          ) : <div />}
-                          {next ? (
-                            <button
-                              onClick={() => setActiveLesson(next)}
-                              style={{ background:'linear-gradient(135deg,#FF6B9D,#FF8E53)', border:'none', borderRadius:20, color:'#fff', padding:'0.6rem 1.5rem', fontWeight:900, fontSize:'0.95rem', cursor:'pointer', display:'flex', alignItems:'center', gap:6, boxShadow:'0 4px 16px rgba(255,107,157,0.4)' }}
-                            >
-                              Tiếp theo 🚀
-                            </button>
-                          ) : (
-                            <div style={{ background:'linear-gradient(135deg,#43e97b,#38f9d7)', border:'none', borderRadius:20, color:'#fff', padding:'0.6rem 1.5rem', fontWeight:900, fontSize:'0.95rem', boxShadow:'0 4px 16px rgba(67,233,123,0.4)' }}>
-                              🎉 Học xong rồi! Giỏi lắm!
-                            </div>
-                          )}
+                          {prev ? <button className="btn btn-secondary" onClick={() => setActiveLesson(prev)}>← {prev.title}</button> : <div />}
+                          {next ? <button className="btn btn-primary" onClick={() => setActiveLesson(next)}>Hiểu rồi, Tiếp tục →</button> : <div style={{ fontSize: '1rem', color: 'var(--success)', fontWeight: 600 }}>🎉 Bạn đã học xong!</div>}
                         </>
                       );
                     })()}
@@ -552,114 +468,90 @@ const CourseLearning = () => {
               )}
             </div>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:'1rem' }}>
-              <div style={{ fontSize:'4rem', animation:'miuBob 2s ease-in-out infinite' }}>👈</div>
-              <div style={{ fontWeight:900, fontSize:'1.2rem', color:'#FF6B9D' }}>Chọn bài học nào đó đi!</div>
-              <p style={{ color:'#aaa', fontWeight:600 }}>Nhấn vào bài học ở bên phải nhé 😊</p>
+            <div className="empty-state">
+              <div className="empty-state-icon">👈</div>
+              <h3>Chọn bài học</h3>
+              <p>Chọn bài học từ danh sách bên phải.</p>
             </div>
           )}
         </div>
 
-        {/* ===== RIGHT: SYLLABUS ===== */}
-        <div style={{ width:'340px', background:'#FFF9FE', borderLeft:'2px solid #FFD6E8', overflowY:'auto', display:'flex', flexDirection:'column' }}>
-          {/* Sidebar header */}
-          <div style={{
-            padding:'1rem 1.25rem',
-            background:'linear-gradient(135deg,#FF6B9D,#FF8E53)',
-            color:'#fff',
-            fontWeight:900, fontSize:'1rem',
-            flexShrink:0,
-            display:'flex', alignItems:'center', gap:'0.5rem',
-          }}>
-            📚 Nội dung khoá học
+        {/* Right: Sticky Syllabus (30%) */}
+        <div style={{ 
+          width: '350px', background: 'var(--surface)', borderLeft: '1px solid var(--border)', 
+          overflowY: 'auto', display: 'flex', flexDirection: 'column'
+        }}>
+          <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', fontWeight: 800, fontSize: '1.1rem' }}>
+            Nội dung khoá học
           </div>
-
-          <div style={{ padding:'1rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
-            {course.chapters?.map((chapter, ci) => {
-              const chapterColors = [
-                { bg:'#FFE4F0', border:'#FFB3D9', text:'#FF6B9D', dot:'🌸' },
-                { bg:'#FFF3E0', border:'#FFCC80', text:'#FF8E53', dot:'🌻' },
-                { bg:'#E8F5E9', border:'#A5D6A7', text:'#43A047', dot:'🍀' },
-                { bg:'#E3F2FD', border:'#90CAF9', text:'#1E88E5', dot:'🌊' },
-                { bg:'#F3E5F5', border:'#CE93D8', text:'#8E24AA', dot:'🌷' },
-              ];
-              const cc = chapterColors[ci % chapterColors.length];
-              return (
-                <div key={chapter.id} style={{ background:cc.bg, border:`2px solid ${cc.border}`, borderRadius:16, overflow:'hidden' }}>
-                  {/* Chapter title */}
-                  <div style={{ padding:'0.75rem 1rem', fontWeight:900, fontSize:'0.9rem', color:cc.text, display:'flex', alignItems:'center', gap:'0.5rem', borderBottom:`1px solid ${cc.border}` }}>
-                    <span>{cc.dot}</span> {chapter.title}
-                  </div>
-                  {/* Lessons */}
-                  <div style={{ display:'flex', flexDirection:'column', gap:3, padding:'0.5rem' }}>
-                    {chapter.lessons?.map((lesson, idx) => {
-                      const isDone = !!progress[lesson.id];
-                      const isActive = activeLesson?.id === lesson.id;
-                      const typeEmoji = lesson.video_url || lesson.file_type === 'video' ? '🎬' : lesson.file_url ? '📄' : '📖';
-                      return (
-                        <button
-                          key={lesson.id}
-                          onClick={() => setActiveLesson(lesson)}
-                          style={{
-                            display:'flex', alignItems:'center', gap:'0.6rem',
-                            padding:'0.65rem 0.875rem', borderRadius:12,
-                            background: isActive ? cc.text : isDone ? 'rgba(67,233,123,0.12)' : '#fff',
-                            border: isActive ? 'none' : isDone ? '1.5px solid #43e97b' : `1.5px solid ${cc.border}`,
-                            cursor:'pointer', transition:'all 0.15s', textAlign:'left', width:'100%',
-                            boxShadow: isActive ? `0 4px 12px ${cc.text}50` : 'none',
-                          }}
-                        >
-                          <span style={{ fontSize:'1rem', flexShrink:0 }}>
-                            {isDone ? '✅' : typeEmoji}
-                          </span>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:'0.85rem', fontWeight: isActive ? 800 : 600, color: isActive ? '#fff' : isDone ? '#43A047' : '#444', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden' }}>
-                              {idx + 1}. {lesson.title}
-                            </div>
-                            {lesson.duration && lesson.duration !== '00:00' && (
-                              <div style={{ fontSize:'0.72rem', color: isActive ? 'rgba(255,255,255,0.8)' : '#bbb', fontWeight:600, marginTop:1 }}>
-                                ⏱ {lesson.duration}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                    {chapter.assignments?.map((assignment) => {
-                      const isActive = activeLesson?.id === assignment.id && activeLesson?.item_type === 'assignment';
-                      return (
-                        <button
-                          key={`ass_${assignment.id}`}
-                          onClick={() => setActiveLesson({...assignment, item_type:'assignment'})}
-                          style={{
-                            display:'flex', alignItems:'center', gap:'0.6rem',
-                            padding:'0.65rem 0.875rem', borderRadius:12,
-                            background: isActive ? '#FF8E53' : '#FFF3E0',
-                            border: isActive ? 'none' : '1.5px solid #FFCC80',
-                            cursor:'pointer', transition:'all 0.15s', textAlign:'left', width:'100%',
-                            boxShadow: isActive ? '0 4px 12px rgba(255,142,83,0.4)' : 'none',
-                          }}
-                        >
-                          <span style={{ fontSize:'1rem' }}>📝</span>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:'0.85rem', fontWeight: isActive ? 800 : 600, color: isActive ? '#fff' : '#FF8E53', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden' }}>
-                              Bài tập / Quiz
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+          <div className="lesson-list" style={{ padding: '1rem' }}>
+            {course.chapters?.map((chapter) => (
+              <div key={chapter.id} style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontWeight: 800, padding: '0 0.5rem', color: 'var(--text)', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
+                  {chapter.title}
                 </div>
-              );
-            })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {chapter.lessons?.map((lesson, idx) => {
+                    const isDone = !!progress[lesson.id];
+                    const isActive = activeLesson?.id === lesson.id;
+                    return (
+                      <div key={lesson.id}
+                        className={`lesson-item ${isActive ? 'active' : ''}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'var(--transition)',
+                          background: isActive ? 'var(--primary-light)' : 'transparent',
+                          border: isActive ? '1px solid var(--primary)' : '1px solid transparent',
+                          opacity: isDone && !isActive ? 0.7 : 1
+                        }}
+                        onClick={() => setActiveLesson(lesson)}>
+                        
+                        <div style={{ color: isDone ? 'var(--success)' : 'var(--text-light)', flexShrink: 0, marginTop: '2px' }}>
+                          {isDone ? <Check size={18} /> : <Circle size={18} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: isActive ? 700 : 500, color: isActive ? 'var(--primary-dark)' : 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            {idx + 1}. {lesson.title}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            <LessonTypeIcon lesson={lesson} /> {lesson.duration || '00:00'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {chapter.assignments?.map((assignment) => {
+                    const isActive = activeLesson?.id === assignment.id && activeLesson?.item_type === 'assignment';
+                    return (
+                      <div key={`ass_${assignment.id}`}
+                        className={`lesson-item ${isActive ? 'active' : ''}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'var(--transition)',
+                          background: isActive ? 'var(--warning-light)' : 'transparent',
+                          border: isActive ? '1px solid var(--warning)' : '1px solid transparent'
+                        }}
+                        onClick={() => setActiveLesson({...assignment, item_type: 'assignment'})}>
+                        
+                        <div style={{ color: 'var(--warning)', flexShrink: 0, marginTop: '2px' }}>
+                          <ClipboardList size={18} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: isActive ? 700 : 500, color: 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            Bài tập / Quiz
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
       <Confetti active={showConfetti} />
       <LessonCompleteToast show={showCompleteToast} onClose={() => setShowCompleteToast(false)} />
-      <style>{`@keyframes miuBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
     </div>
   );
 };
