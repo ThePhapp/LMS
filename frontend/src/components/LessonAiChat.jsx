@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { Send, Bot, User, Loader, Trash2, Sparkles } from 'lucide-react';
+import { Send, Loader } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -11,25 +11,26 @@ function buildSystemPrompt(lesson, course) {
   const lessonContent = lesson?.content || '';
   const courseTitle = course?.title || '';
 
-  return `Bạn là trợ lý AI chuyên biệt cho bài học "${lessonTitle}" thuộc khoá học "${courseTitle}" trên hệ thống VanAnh LMS.
+  return `Bạn là Miu - một bạn robot dễ thương, thông minh và rất yêu trẻ em! Bạn đang giúp các bạn học sinh tiểu học học bài "${lessonTitle}" trong khoá học "${courseTitle}".
 
 Nội dung bài học:
 ${lessonContent || '(Chưa có mô tả chi tiết)'}
 
-Nhiệm vụ của bạn:
-- Chỉ trả lời các câu hỏi liên quan đến bài học này và chủ đề của khoá học.
-- Giải thích các khái niệm trong bài học một cách rõ ràng, dễ hiểu.
-- Đưa ra ví dụ minh hoạ khi cần thiết.
-- Nếu câu hỏi hoàn toàn không liên quan đến bài học, hãy nhẹ nhàng hướng học sinh trở lại chủ đề bài học.
-- Hỗ trợ cả tiếng Việt và tiếng Anh.
-- Trả lời thân thiện, ngắn gọn và chính xác.`;
+Cách bạn trả lời:
+- Dùng ngôn ngữ thật đơn giản, dễ hiểu cho học sinh tiểu học (6-11 tuổi).
+- Luôn vui vẻ, khích lệ và dùng nhiều emoji dễ thương 🌟✨🎉.
+- Giải thích bằng ví dụ gần gũi trong cuộc sống hàng ngày.
+- Khen ngợi khi bạn nhỏ hỏi câu hay.
+- Nếu câu hỏi không liên quan đến bài học, nhẹ nhàng quay lại chủ đề bài.
+- Trả lời ngắn gọn, không quá dài để bạn nhỏ dễ đọc.
+- Hỗ trợ tiếng Việt là chính.`;
 }
 
 const SUGGESTIONS = [
-  'Giải thích lại nội dung chính của bài này?',
-  'Cho tôi ví dụ về kiến thức trong bài?',
-  'Tôi cần lưu ý gì quan trọng nhất?',
-  'Bài này liên quan đến gì trong thực tế?',
+  { emoji: '🤔', text: 'Bài này nói về chuyện gì vậy Miu?' },
+  { emoji: '🌟', text: 'Cho mình ví dụ dễ hiểu hơn được không?' },
+  { emoji: '💡', text: 'Phần quan trọng nhất là gì?' },
+  { emoji: '🎯', text: 'Bài này dùng để làm gì trong cuộc sống?' },
 ];
 
 export default function LessonAiChat({ lesson, course }) {
@@ -71,7 +72,7 @@ export default function LessonAiChat({ lesson, course }) {
       },
       {
         role: 'model',
-        parts: [{ text: `Xin chào! Tôi là trợ lý AI cho bài học "${lesson?.title || 'này'}". Bạn có thắc mắc gì về bài học, hãy hỏi tôi nhé!` }],
+        parts: [{ text: `Xin chào bạn nhỏ! 👋 Mình là Miu - bạn robot siêu dễ thương của bài học "${lesson?.title || 'này'}" nè! Bạn có câu hỏi gì cứ hỏi Miu nhé! 🌟` }],
       },
       ...newMessages.map((m) => ({
         role: m.role === 'user' ? 'user' : 'model',
@@ -125,157 +126,219 @@ export default function LessonAiChat({ lesson, course }) {
 
   if (!user) return null;
 
+  const canSend = !!input.trim() && !loading;
+
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '520px',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
+      height: '560px',
+      borderRadius: 24,
       overflow: 'hidden',
-      background: 'var(--surface)',
+      background: 'linear-gradient(180deg, #FFF9FE 0%, #F0F7FF 100%)',
+      border: '3px solid #FFB3D9',
+      boxShadow: '0 8px 32px rgba(255,107,157,0.15)',
+      fontFamily: '"Nunito", "Segoe UI", sans-serif',
     }}>
-      {/* Header */}
+
+      {/* ===== HEADER ===== */}
       <div style={{
+        background: 'linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%)',
+        padding: '1rem 1.25rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0.875rem 1.25rem',
-        background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-        color: '#fff',
         flexShrink: 0,
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        {/* Decorative circles */}
+        <div style={{ position: 'absolute', top: -12, right: 60, width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+        <div style={{ position: 'absolute', bottom: -8, right: 20, width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.12)' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', zIndex: 1 }}>
+          {/* Mascot */}
           <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.2)',
+            width: 48, height: 48, borderRadius: '50%',
+            background: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.6rem',
+            boxShadow: '0 3px 10px rgba(0,0,0,0.15)',
+            flexShrink: 0,
+            animation: 'miuBob 2s ease-in-out infinite',
           }}>
-            <Sparkles size={16} />
+            🐱
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>AI Trợ lý bài học</div>
-            <div style={{ fontSize: '0.75rem', opacity: 0.85 }}>
-              {loading ? 'Đang trả lời...' : `Hỏi về: ${lesson?.title || 'bài học này'}`}
+            <div style={{ fontWeight: 900, fontSize: '1rem', color: '#fff', letterSpacing: 0.3 }}>
+              Miu AI ✨
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+              {loading ? '🤔 Miu đang nghĩ...' : '🟢 Sẵn sàng giúp bạn!'}
             </div>
           </div>
         </div>
+
         {messages.length > 0 && (
           <button
             onClick={() => setMessages([])}
-            title="Xoá cuộc trò chuyện"
+            title="Bắt đầu lại"
             style={{
-              background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
-              color: '#fff', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4,
+              background: 'rgba(255,255,255,0.25)',
+              border: '2px solid rgba(255,255,255,0.4)',
+              borderRadius: 20,
+              color: '#fff',
+              cursor: 'pointer',
+              padding: '4px 12px',
               fontSize: '0.75rem',
+              fontWeight: 700,
+              zIndex: 1,
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            <Trash2 size={13} /> Xoá
+            🔄 Làm mới
           </button>
         )}
       </div>
 
-      {/* Messages */}
+      {/* ===== MESSAGES ===== */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
         padding: '1rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.75rem',
+        gap: '1rem',
+        background: 'transparent',
       }}>
+
+        {/* Empty state */}
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
+          <div style={{ textAlign: 'center', padding: '0.75rem 0.5rem' }}>
+            {/* Big mascot */}
             <div style={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #ede9fe, #e0e7ff)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 1rem',
+              fontSize: '4rem',
+              marginBottom: '0.5rem',
+              animation: 'miuBob 2s ease-in-out infinite',
+              display: 'inline-block',
             }}>
-              <Bot size={28} color="#7c3aed" />
+              🐱
             </div>
-            <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>
-              Chào bạn! Tôi là AI Trợ lý 👋
+            <div style={{
+              background: 'linear-gradient(135deg, #FF6B9D, #FF8E53)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 900,
+              fontSize: '1.15rem',
+              marginBottom: '0.25rem',
+            }}>
+              Chào bạn nhỏ! Miu đây 👋
+            </div>
+            <p style={{ fontSize: '0.88rem', color: '#888', marginBottom: '1rem', lineHeight: 1.6 }}>
+              Bạn đang học bài<br />
+              <strong style={{ color: '#FF6B9D' }}>"{lesson?.title}"</strong><br />
+              Có gì không hiểu thì hỏi Miu nhé! 😊
             </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-              Hỏi tôi bất cứ điều gì liên quan đến bài học <strong>"{lesson?.title}"</strong>
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
+
+            {/* Suggestion chips */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch' }}>
               {SUGGESTIONS.map((s) => (
                 <button
-                  key={s}
-                  onClick={() => sendMessage(s)}
+                  key={s.text}
+                  onClick={() => sendMessage(s.text)}
                   style={{
-                    background: 'var(--primary-light)',
-                    border: '1px solid var(--primary)',
-                    borderRadius: 20,
-                    padding: '0.35rem 0.875rem',
-                    fontSize: '0.8rem',
-                    color: 'var(--primary)',
+                    background: '#fff',
+                    border: '2px solid #FFD6E8',
+                    borderRadius: 16,
+                    padding: '0.6rem 1rem',
+                    fontSize: '0.85rem',
+                    color: '#FF6B9D',
                     cursor: 'pointer',
-                    fontWeight: 500,
-                    transition: 'var(--transition)',
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.15s',
+                    boxShadow: '0 2px 6px rgba(255,107,157,0.1)',
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#FFF0F6'; e.currentTarget.style.borderColor = '#FF6B9D'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#FFD6E8'; }}
                 >
-                  {s}
+                  <span style={{ fontSize: '1.1rem' }}>{s.emoji}</span>
+                  {s.text}
                 </button>
               ))}
             </div>
           </div>
         )}
 
+        {/* Messages */}
         {messages.map((msg, i) => (
           <div
             key={i}
             style={{
               display: 'flex',
-              gap: '0.5rem',
+              gap: '0.6rem',
               alignItems: 'flex-end',
               flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
             }}
           >
+            {/* Avatar */}
             <div style={{
-              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-              background: msg.role === 'user' ? 'var(--primary)' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff',
+              fontSize: '1.2rem',
+              background: msg.role === 'user'
+                ? 'linear-gradient(135deg, #4ECDC4, #44A08D)'
+                : 'linear-gradient(135deg, #FFB3D9, #FF6B9D)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              border: '2px solid #fff',
             }}>
-              {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
+              {msg.role === 'user' ? '👦' : '🐱'}
             </div>
+
+            {/* Bubble */}
             <div style={{
-              maxWidth: '78%',
-              background: msg.role === 'user' ? 'var(--primary)' : 'var(--bg)',
-              color: msg.role === 'user' ? '#fff' : 'var(--text)',
-              borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              padding: '0.6rem 0.875rem',
-              fontSize: '0.9rem',
-              lineHeight: 1.6,
-              border: msg.role === 'model' ? '1px solid var(--border)' : 'none',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              maxWidth: '75%',
+              background: msg.role === 'user'
+                ? 'linear-gradient(135deg, #4ECDC4, #44A08D)'
+                : '#fff',
+              color: msg.role === 'user' ? '#fff' : '#333',
+              borderRadius: msg.role === 'user' ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
+              padding: '0.7rem 1rem',
+              fontSize: '0.92rem',
+              lineHeight: 1.65,
+              boxShadow: msg.role === 'user'
+                ? '0 4px 12px rgba(78,205,196,0.3)'
+                : '0 4px 12px rgba(0,0,0,0.08)',
+              border: msg.role === 'model' ? '2px solid #FFE4F0' : 'none',
             }}>
               <MessageText text={msg.text} />
             </div>
           </div>
         ))}
 
+        {/* Typing indicator */}
         {loading && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end' }}>
             <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-            }}>
-              <Bot size={13} />
-            </div>
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #FFB3D9, #FF6B9D)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1.2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', border: '2px solid #fff',
+            }}>🐱</div>
             <div style={{
-              background: 'var(--bg)', border: '1px solid var(--border)',
-              borderRadius: '18px 18px 18px 4px', padding: '0.6rem 0.875rem',
-              display: 'flex', gap: 4, alignItems: 'center',
+              background: '#fff', border: '2px solid #FFE4F0',
+              borderRadius: '20px 20px 20px 6px',
+              padding: '0.75rem 1rem',
+              display: 'flex', gap: 5, alignItems: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
             }}>
               {[0, 1, 2].map((d) => (
                 <span key={d} style={{
-                  width: 7, height: 7, borderRadius: '50%',
-                  background: '#7c3aed', opacity: 0.7,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#FF6B9D',
                   animation: `lessonAiDot 1.2s ${d * 0.2}s infinite ease-in-out`,
                   display: 'inline-block',
                 }} />
@@ -287,18 +350,18 @@ export default function LessonAiChat({ lesson, course }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* ===== INPUT ===== */}
       <div style={{
-        borderTop: '1px solid var(--border)',
+        borderTop: '2px solid #FFE4F0',
         padding: '0.75rem',
-        background: 'var(--surface)',
+        background: '#fff',
         flexShrink: 0,
       }}>
         {!GEMINI_API_KEY && (
           <div style={{
-            background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8,
+            background: '#FEF3C7', border: '2px solid #F59E0B', borderRadius: 12,
             padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#92400E',
-            marginBottom: '0.5rem',
+            marginBottom: '0.5rem', fontWeight: 600,
           }}>
             ⚠️ Chưa cấu hình VITE_GEMINI_API_KEY
           </div>
@@ -309,46 +372,66 @@ export default function LessonAiChat({ lesson, course }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Hỏi về bài học này... (Enter để gửi)"
+            placeholder="Hỏi Miu bất cứ điều gì về bài học..."
             rows={1}
             disabled={loading}
             style={{
               flex: 1,
               resize: 'none',
-              border: '1px solid var(--border)',
+              border: '2px solid #FFD6E8',
               borderRadius: 20,
-              padding: '0.55rem 1rem',
-              fontSize: '0.9rem',
-              background: 'var(--bg)',
-              color: 'var(--text)',
+              padding: '0.6rem 1rem',
+              fontSize: '0.92rem',
+              background: '#FFF9FE',
+              color: '#333',
               outline: 'none',
               fontFamily: 'inherit',
               lineHeight: 1.5,
               maxHeight: 100,
               overflow: 'auto',
+              transition: 'border-color 0.15s',
             }}
+            onFocus={(e) => { e.target.style.borderColor = '#FF6B9D'; }}
+            onBlur={(e) => { e.target.style.borderColor = '#FFD6E8'; }}
           />
           <button
             onClick={() => sendMessage()}
-            disabled={!input.trim() || loading}
-            title="Gửi"
+            disabled={!canSend}
+            title="Gửi cho Miu!"
             style={{
-              width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-              background: !input.trim() || loading ? 'var(--border)' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              border: 'none', cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'var(--transition)',
+              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+              background: canSend
+                ? 'linear-gradient(135deg, #FF6B9D, #FF8E53)'
+                : '#F3E8F0',
+              border: 'none',
+              cursor: canSend ? 'pointer' : 'not-allowed',
+              color: canSend ? '#fff' : '#ccc',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: canSend ? '0 4px 12px rgba(255,107,157,0.4)' : 'none',
+              transition: 'all 0.2s',
+              fontSize: '1rem',
             }}
           >
-            {loading ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={16} />}
+            {loading
+              ? <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
+              : <Send size={18} />
+            }
           </button>
         </div>
       </div>
 
       <style>{`
         @keyframes lessonAiDot {
-          0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-          40% { transform: scale(1.1); opacity: 1; }
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+          40% { transform: scale(1.15); opacity: 1; }
+        }
+        @keyframes miuBob {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-5px); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
@@ -358,23 +441,25 @@ export default function LessonAiChat({ lesson, course }) {
 function MessageText({ text }) {
   const parts = text.split(/(```[\s\S]*?```|`[^`]+`)/g);
   return (
-    <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+    <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.92rem', lineHeight: 1.7 }}>
       {parts.map((part, i) => {
         if (part.startsWith('```') && part.endsWith('```')) {
           const inner = part.slice(3, -3).replace(/^[a-z]+\n/, '');
           return (
             <pre key={i} style={{
-              background: 'rgba(0,0,0,0.07)', borderRadius: 6,
-              padding: '8px 10px', fontSize: '0.8rem',
-              overflowX: 'auto', margin: '4px 0', fontFamily: 'monospace',
+              background: 'rgba(0,0,0,0.06)', borderRadius: 10,
+              padding: '8px 12px', fontSize: '0.82rem',
+              overflowX: 'auto', margin: '6px 0', fontFamily: 'monospace',
+              border: '1px solid rgba(0,0,0,0.08)',
             }}>{inner}</pre>
           );
         }
         if (part.startsWith('`') && part.endsWith('`')) {
           return (
             <code key={i} style={{
-              background: 'rgba(0,0,0,0.08)', borderRadius: 4,
-              padding: '1px 5px', fontFamily: 'monospace', fontSize: '0.85em',
+              background: 'rgba(255,107,157,0.12)', borderRadius: 5,
+              padding: '2px 6px', fontFamily: 'monospace', fontSize: '0.85em',
+              color: '#FF6B9D',
             }}>{part.slice(1, -1)}</code>
           );
         }
