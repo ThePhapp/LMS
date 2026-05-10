@@ -45,8 +45,8 @@ const InstructorDashboard = () => {
 
   if (loading) return <div className="loading-wrapper"><div className="spinner" /></div>;
 
-  const totalStudents = courses.reduce((acc, c) => acc + (c.student_count || 0), 0);
-  const totalRevenue = courses.reduce((acc, c) => acc + ((c.student_count || 0) * (c.price || 0)), 0);
+  const totalStudents = courses.reduce((acc, c) => acc + (parseInt(c.student_count) || 0), 0);
+  const totalRevenue = courses.reduce((acc, c) => acc + ((parseInt(c.student_count) || 0) * (parseFloat(c.price) || 0)), 0);
 
   return (
     <div className="main-content">
