@@ -73,7 +73,7 @@ const Landing = () => {
             </ul>
           </div>
           <div className="info-image">
-            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=500&q=80" alt="Education" />
+            <img src="public/education.jpg" alt="Education" />
           </div>
         </div>
       </section>

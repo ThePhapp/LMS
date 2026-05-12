@@ -930,7 +930,7 @@ a:hover { color: var(--primary-dark); }
   margin-bottom: 0.5rem;
 }
 .info-image img {
-  width: 100%;
+  width: 120%;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
 }
