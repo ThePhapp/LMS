@@ -24,7 +24,7 @@ const Landing = () => {
       {/* Main Features Section */}
       <section className="features-section">
         <div className="section-header">
-          <h2 className="section-title">GIỚI THIỆU <span>Lớp Học Đổi Mới</span></h2>
+          <h2 className="section-title">GIỚI THIỆU <span>LỚP HỌC ĐỔI MỚI</span></h2>
           <h3 className="section-subtitle">TÍNH NĂNG CHÍNH</h3>
         </div>
         <div className="features-grid">
@@ -59,7 +59,7 @@ const Landing = () => {
       <section className="info-section">
         <div className="info-container">
           <div className="info-text">
-            <h2>Lớp Học Đổi Mới - HỆ THỐNG QUẢN LÝ HỌC TẬP TRỰC TUYẾN</h2>
+            <h2>LỚP HỌC ĐỔI MỚI - HỆ THỐNG QUẢN LÝ HỌC TẬP TRỰC TUYẾN</h2>
             <h3>ĐƠN VỊ ĐI ĐẦU TRONG CHUYỂN ĐỔI SỐ</h3>
             <p>
               Sự bùng nổ về công nghệ đang mở ra một kỷ nguyên mới cho ngành giáo dục. Xu hướng giáo dục đang dần thay đổi: thông minh hơn, nhanh nhạy hơn và tốn ít chi phí hơn. Công nghệ số đã tác động đến từng lớp học và làm thay đổi cách người dạy tiếp cận với người học.
@@ -86,7 +86,7 @@ const Landing = () => {
             <p><strong>Lớp Học Đổi Mới</strong></p>
             <p>Địa chỉ: Hanoi, Vietnam</p>
             <p>Điện thoại: 0123.456.789</p>
-            <p>Email: contact@Lớp Học Đổi Mới.lms</p>
+            <p>Email: contact@lop-hoc-doi-moi.lms</p>
           </div>
           <div className="footer-col">
             <h4>LIÊN KẾT</h4>
