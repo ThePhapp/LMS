@@ -23,6 +23,14 @@ const Navbar = () => {
     setShowMobileMenu(false);
   };
 
+  const handleNavClick = (path) => {
+    if (!user) {
+      navigate('/login', { state: { from: path } });
+    } else {
+      navigate(path);
+    }
+  };
+
   const isActive = (path) => location.pathname === path;
 
   const initial = user?.name?.charAt(0)?.toUpperCase() || '?';
@@ -56,35 +64,66 @@ const Navbar = () => {
 
       {/* Desktop nav */}
       <div className="nav-links">
-        {user ? (
-          <>
-            <Link to={coursesPath} className={`nav-link ${isCoursesActive ? 'nav-link-active' : ''}`}
-              style={isCoursesActive ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {}}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <BookOpen size={15} /> {t('nav_courses')}
-              </span>
-            </Link>
-            <Link to="/timetable" className={`nav-link ${isActive('/timetable') ? 'nav-link-active' : ''}`}
-              style={isActive('/timetable') ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {}}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Calendar size={15} /> {t('nav_timetable')}
-              </span>
-            </Link>
-            <Link to="/guide" className={`nav-link ${isActive('/guide') ? 'nav-link-active' : ''}`}
-              style={isActive('/guide') ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {}}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <MessageSquare size={15} /> {t('nav_guide')}
-              </span>
-            </Link>
-            <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'nav-link-active' : ''}`}
-              style={isActive('/forum') ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {}}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <MessageSquare size={15} /> {t('nav_forum')}
-              </span>
-            </Link>
+        {/* Navigation Links - Always visible */}
+        <button 
+          onClick={() => handleNavClick(coursesPath)}
+          className={`nav-link ${isCoursesActive ? 'nav-link-active' : ''}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            ...(isCoursesActive ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {})
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <BookOpen size={15} /> {t('nav_courses')}
+          </span>
+        </button>
+        <button 
+          onClick={() => handleNavClick('/timetable')}
+          className={`nav-link ${isActive('/timetable') ? 'nav-link-active' : ''}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            ...(isActive('/timetable') ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {})
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Calendar size={15} /> {t('nav_timetable')}
+          </span>
+        </button>
+        <button 
+          onClick={() => handleNavClick('/guide')}
+          className={`nav-link ${isActive('/guide') ? 'nav-link-active' : ''}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            ...(isActive('/guide') ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {})
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <MessageSquare size={15} /> {t('nav_guide')}
+          </span>
+        </button>
+        <button 
+          onClick={() => handleNavClick('/forum')}
+          className={`nav-link ${isActive('/forum') ? 'nav-link-active' : ''}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            ...(isActive('/forum') ? { color: 'var(--primary)', background: 'var(--primary-light)' } : {})
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <MessageSquare size={15} /> {t('nav_forum')}
+          </span>
+        </button>
 
-            {/* Language Switcher */}
-            <div style={{ position: 'relative', marginLeft: '0.5rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }} ref={langMenuRef}>
+        {/* Language Switcher */}
+        <div style={{ position: 'relative', marginLeft: '0.5rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }} ref={langMenuRef}>
               <button 
                 onClick={() => setShowLangMenu(!showLangMenu)}
                 className="btn btn-ghost btn-sm"
@@ -163,7 +202,8 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* User Menu */}
+            {/* User Menu - Only when logged in */}
+            {user && (
             <div style={{ position: 'relative', marginLeft: '0.5rem' }} ref={userMenuRef}>
               <button 
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -272,23 +312,25 @@ const Navbar = () => {
                 </div>
               )}
             </div>
-          </>
-        ) : (
-          <>
-            <Link to="/login" className="btn btn-secondary btn-sm">{t('nav_login')}</Link>
-            <Link to="/register" className="btn btn-primary btn-sm">Đăng ký</Link>
-          </>
-        )}
-      </div>
+            )}
 
-      {/* Hamburger button - mobile only */}
-      <button className="nav-hamburger" onClick={() => setShowMobileMenu(true)} aria-label="Mở menu">
-        <Menu size={24} />
-      </button>
+            {/* Login/Register - Only when not logged in */}
+            {!user && (
+            <div style={{ marginLeft: '0.5rem' }}>
+              <Link to="/login" className="btn btn-secondary btn-sm">{t('nav_login')}</Link>
+              <Link to="/register" className="btn btn-primary btn-sm" style={{ marginLeft: '0.5rem' }}>Đăng ký</Link>
+            </div>
+            )}
+          </div>
 
-      {/* Mobile overlay */}
-      <div
-        className={`nav-mobile-overlay ${showMobileMenu ? 'open' : ''}`}
+        {/* Hamburger button - mobile only */}
+        <button className="nav-hamburger" onClick={() => setShowMobileMenu(true)} aria-label="Mở menu">
+          <Menu size={24} />
+        </button>
+
+        {/* Mobile overlay */}
+        <div
+          className={`nav-mobile-overlay ${showMobileMenu ? 'open' : ''}`}
         onClick={() => setShowMobileMenu(false)}
         onKeyDown={e => e.key === 'Escape' && setShowMobileMenu(false)}
         role="button"
@@ -325,33 +367,67 @@ const Navbar = () => {
         )}
 
         <div className="nav-mobile-links">
-          {user ? (
+          {/* Navigation Links - Always visible */}
+          <button 
+            onClick={() => {
+              handleNavClick(coursesPath);
+              setShowMobileMenu(false);
+            }}
+            className={`nav-mobile-link ${isCoursesActive ? 'active' : ''}`}
+            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+          >
+            <BookOpen size={18} /> {t('nav_courses')}
+          </button>
+          <button 
+            onClick={() => {
+              handleNavClick('/timetable');
+              setShowMobileMenu(false);
+            }}
+            className={`nav-mobile-link ${isActive('/timetable') ? 'active' : ''}`}
+            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+          >
+            <Calendar size={18} /> {t('nav_timetable')}
+          </button>
+          <button 
+            onClick={() => {
+              handleNavClick('/guide');
+              setShowMobileMenu(false);
+            }}
+            className={`nav-mobile-link ${isActive('/guide') ? 'active' : ''}`}
+            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+          >
+            <MessageSquare size={18} /> {t('nav_guide')}
+          </button>
+          <button 
+            onClick={() => {
+              handleNavClick('/forum');
+              setShowMobileMenu(false);
+            }}
+            className={`nav-mobile-link ${isActive('/forum') ? 'active' : ''}`}
+            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+          >
+            <MessageSquare size={18} /> {t('nav_forum')}
+          </button>
+
+          {/* User Profile - Only when logged in */}
+          {user && (
             <>
-              <Link to={coursesPath} className={`nav-mobile-link ${isCoursesActive ? 'active' : ''}`}>
-                <BookOpen size={18} /> {t('nav_courses')}
-              </Link>
-              <Link to="/timetable" className={`nav-mobile-link ${isActive('/timetable') ? 'active' : ''}`}>
-                <Calendar size={18} /> {t('nav_timetable')}
-              </Link>
-              <Link to="/guide" className={`nav-mobile-link ${isActive('/guide') ? 'active' : ''}`}>
-                <MessageSquare size={18} /> {t('nav_guide')}
-              </Link>
-              <Link to="/forum" className={`nav-mobile-link ${isActive('/forum') ? 'active' : ''}`}>
-                <MessageSquare size={18} /> {t('nav_forum')}
-              </Link>
-              <Link to="/profile" className={`nav-mobile-link ${isActive('/profile') ? 'active' : ''}`}>
+              <Link to="/profile" className={`nav-mobile-link ${isActive('/profile') ? 'active' : ''}`} onClick={() => setShowMobileMenu(false)}>
                 <User size={18} /> {t('nav_profile')}
               </Link>
               <button className="nav-mobile-link-btn" onClick={handleLogout}>
                 <LogOut size={18} /> {t('nav_logout')}
               </button>
             </>
-          ) : (
+          )}
+
+          {/* Login/Register - Only when not logged in */}
+          {!user && (
             <>
-              <Link to="/login" className="nav-mobile-link">
+              <Link to="/login" className="nav-mobile-link" onClick={() => setShowMobileMenu(false)}>
                 <User size={18} /> {t('nav_login')}
               </Link>
-              <Link to="/register" className="nav-mobile-link">
+              <Link to="/register" className="nav-mobile-link" onClick={() => setShowMobileMenu(false)}>
                 <GraduationCap size={18} /> Đăng ký dùng thử
               </Link>
             </>
