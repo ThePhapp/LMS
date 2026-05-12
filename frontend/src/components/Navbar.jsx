@@ -51,7 +51,7 @@ const Navbar = () => {
     <nav className="navbar">
       <Link to="/" className="nav-brand">
         <img src="/vinh.svg" alt="logo" style={{ height: 36 }} />
-        <span className="nav-brand-text">VanAnh LMS</span>
+        <span className="nav-brand-text">Lớp Học Đổi Mới</span>
       </Link>
 
       {/* Desktop nav */}
@@ -301,7 +301,7 @@ const Navbar = () => {
         <div className="nav-mobile-header">
           <Link to="/" className="nav-brand" onClick={() => setShowMobileMenu(false)}>
             <img src="/vinh.svg" alt="logo" style={{ height: 30 }} />
-            <span>VanAnh LMS</span>
+            <span>Lớp Học Đổi Mới</span>
           </Link>
           <button className="nav-mobile-close" onClick={() => setShowMobileMenu(false)}>
             <X size={22} />

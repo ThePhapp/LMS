@@ -39,7 +39,7 @@ const Register = () => {
             <GraduationCap size={28} color="#fff" />
           </div>
           <h1 className="auth-title">Tạo tài khoản</h1>
-          <p className="auth-subtitle">Tham gia VanAnh LMS miễn phí ngay hôm nay</p>
+          <p className="auth-subtitle">Tham gia Lớp Học Đổi Mới miễn phí ngay hôm nay</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}

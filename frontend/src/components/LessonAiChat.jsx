@@ -1,6 +1,43 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
-import { Send, Loader } from 'lucide-react';
+import React, { useState, useRef, useEffect, useContext, useCallback } from 'react';
+import { Send, Loader, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
+
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (type === 'send') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(700, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(480, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.22, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+      osc.onended = () => ctx.close();
+    } else if (type === 'receive') {
+      const notes = [523, 659, 784];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.13;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.18, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.start(t);
+        osc.stop(t + 0.28);
+      });
+      setTimeout(() => ctx.close(), 1200);
+    }
+  } catch (_) {}
+}
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -38,13 +75,106 @@ export default function LessonAiChat({ lesson, course }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem('miu_sound') !== 'off'; } catch { return true; }
+  });
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const speechRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const rvLoadedRef = useRef(false);
+
+  const toggleSound = () => {
+    setSoundEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem('miu_sound', next ? 'on' : 'off'); } catch {}
+      return next;
+    });
+  };
+
+  const ensureResponsiveVoice = () => new Promise((resolve) => {
+    if (window.responsiveVoice) { resolve(); return; }
+    if (rvLoadedRef.current) {
+      const t = setInterval(() => { if (window.responsiveVoice) { clearInterval(t); resolve(); } }, 100);
+      return;
+    }
+    rvLoadedRef.current = true;
+    const s = document.createElement('script');
+    s.src = 'https://code.responsivevoice.org/responsivevoice.js?key=FREE';
+    s.onload = () => resolve();
+    s.onerror = () => resolve();
+    document.head.appendChild(s);
+  });
+
+  const cleanForSpeech = (text) => text
+    .replace(/```[\s\S]*?```/g, 'đoạn code')
+    .replace(/`[^`]+`/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/[*#_~]/g, '')
+    // Remove emoji surrogate pairs (emoji outside BMP)
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '')
+    // Remove misc symbol blocks (✅☑️⚡etc.)
+    .replace(/[\u2300-\u27BF\u2B00-\u2BFF\u2600-\u26FF]/g, '')
+    // Remove variation selectors
+    .replace(/\uFE0F/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const speakText = async (text) => {
+    window.speechSynthesis?.cancel();
+    const clean = cleanForSpeech(text);
+    if (!clean) return;
+    try {
+      await ensureResponsiveVoice();
+      if (window.responsiveVoice) {
+        window.responsiveVoice.cancel();
+        window.responsiveVoice.speak(clean, 'Vietnamese Female', { rate: 0.95, pitch: 1, volume: 1 });
+        return;
+      }
+    } catch (_) {}
+    // Native fallback
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    const viVoice = voices.find(v => v.lang.startsWith('vi'));
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = 'vi-VN';
+    utter.rate = 1.0;
+    utter.pitch = 1.3;
+    if (viVoice) utter.voice = viVoice;
+    speechRef.current = utter;
+    window.speechSynthesis.speak(utter);
+  };
+
+  const startListening = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Trình duyệt chưa hỗ trợ nhận dạng giọng nói!'); return; }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'vi-VN';
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onstart = () => setIsListening(true);
+    rec.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      setInput(transcript);
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+  };
 
   // Reset chat when lesson changes
   useEffect(() => {
     setMessages([]);
     setInput('');
+    window.speechSynthesis?.cancel();
+    window.responsiveVoice?.cancel();
+    recognitionRef.current?.stop();
   }, [lesson?.id]);
 
   useEffect(() => {
@@ -62,6 +192,7 @@ export default function LessonAiChat({ lesson, course }) {
     setMessages(newMessages);
     setInput('');
     setLoading(true);
+    if (soundEnabled) playSound('send');
 
     const systemPrompt = buildSystemPrompt(lesson, course);
 
@@ -106,6 +237,7 @@ export default function LessonAiChat({ lesson, course }) {
         'Xin lỗi, tôi không thể trả lời lúc này.';
 
       setMessages((prev) => [...prev, { role: 'model', text: reply }]);
+      if (soundEnabled) playSound('receive');
     } catch (err) {
       console.error('Gemini API error:', err);
       setMessages((prev) => [
@@ -123,6 +255,14 @@ export default function LessonAiChat({ lesson, course }) {
       sendMessage();
     }
   };
+
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel();
+      window.responsiveVoice?.cancel();
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   if (!user) return null;
 
@@ -179,26 +319,42 @@ export default function LessonAiChat({ lesson, course }) {
           </div>
         </div>
 
-        {messages.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', zIndex: 1, alignItems: 'center' }}>
           <button
-            onClick={() => setMessages([])}
-            title="Bắt đầu lại"
+            onClick={toggleSound}
+            title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
             style={{
               background: 'rgba(255,255,255,0.25)',
               border: '2px solid rgba(255,255,255,0.4)',
-              borderRadius: 20,
+              borderRadius: '50%',
               color: '#fff',
               cursor: 'pointer',
-              padding: '4px 12px',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              zIndex: 1,
-              display: 'flex', alignItems: 'center', gap: 4,
+              width: 32, height: 32,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            🔄 Làm mới
+            {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
-        )}
+          {messages.length > 0 && (
+            <button
+              onClick={() => setMessages([])}
+              title="Bắt đầu lại"
+              style={{
+                background: 'rgba(255,255,255,0.25)',
+                border: '2px solid rgba(255,255,255,0.4)',
+                borderRadius: 20,
+                color: '#fff',
+                cursor: 'pointer',
+                padding: '4px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              🔄 Làm mới
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ===== MESSAGES ===== */}
@@ -299,22 +455,40 @@ export default function LessonAiChat({ lesson, course }) {
             </div>
 
             {/* Bubble */}
-            <div style={{
-              maxWidth: '75%',
-              background: msg.role === 'user'
-                ? 'linear-gradient(135deg, #4ECDC4, #44A08D)'
-                : '#fff',
-              color: msg.role === 'user' ? '#fff' : '#333',
-              borderRadius: msg.role === 'user' ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-              padding: '0.7rem 1rem',
-              fontSize: '0.92rem',
-              lineHeight: 1.65,
-              boxShadow: msg.role === 'user'
-                ? '0 4px 12px rgba(78,205,196,0.3)'
-                : '0 4px 12px rgba(0,0,0,0.08)',
-              border: msg.role === 'model' ? '2px solid #FFE4F0' : 'none',
-            }}>
-              <MessageText text={msg.text} />
+            <div style={{ maxWidth: '75%', display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{
+                background: msg.role === 'user'
+                  ? 'linear-gradient(135deg, #4ECDC4, #44A08D)'
+                  : '#fff',
+                color: msg.role === 'user' ? '#fff' : '#333',
+                borderRadius: msg.role === 'user' ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
+                padding: '0.7rem 1rem',
+                fontSize: '0.92rem',
+                lineHeight: 1.65,
+                boxShadow: msg.role === 'user'
+                  ? '0 4px 12px rgba(78,205,196,0.3)'
+                  : '0 4px 12px rgba(0,0,0,0.08)',
+                border: msg.role === 'model' ? '2px solid #FFE4F0' : 'none',
+              }}>
+                <MessageText text={msg.text} />
+              </div>
+              {msg.role === 'model' && (
+                <button
+                  onClick={() => speakText(msg.text)}
+                  title="Nghe Miu đọc"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#FF6B9D', padding: '2px 6px', marginTop: 3,
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    fontSize: '0.72rem', fontWeight: 700, opacity: 0.75,
+                    borderRadius: 8,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
+                >
+                  <Volume2 size={12} /> Giọng nói
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -395,6 +569,25 @@ export default function LessonAiChat({ lesson, course }) {
             onBlur={(e) => { e.target.style.borderColor = '#FFD6E8'; }}
           />
           <button
+            onClick={startListening}
+            title={isListening ? 'Dừng ghi âm' : 'Nói với Miu'}
+            style={{
+              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+              background: isListening
+                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                : '#F3E8F0',
+              border: 'none',
+              cursor: 'pointer',
+              color: isListening ? '#fff' : '#FF6B9D',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: isListening ? '0 4px 12px rgba(239,68,68,0.4)' : 'none',
+              transition: 'all 0.2s',
+              animation: isListening ? 'miuPulse 1s ease-in-out infinite' : 'none',
+            }}
+          >
+            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
+          <button
             onClick={() => sendMessage()}
             disabled={!canSend}
             title="Gửi cho Miu!"
@@ -432,6 +625,10 @@ export default function LessonAiChat({ lesson, course }) {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes miuPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(239,68,68,0.4); }
+          50% { transform: scale(1.08); box-shadow: 0 4px 20px rgba(239,68,68,0.7); }
         }
       `}</style>
     </div>

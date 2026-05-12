@@ -204,7 +204,7 @@ const Guide = () => {
             <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Hướng dẫn sử dụng</h1>
           </div>
           <p style={{ fontSize: '1.1rem', opacity: 0.9, maxWidth: '500px', lineHeight: 1.6 }}>
-            Tìm hiểu cách sử dụng VanAnh LMS — từ việc đăng ký khóa học, theo dõi tiến độ học tập đến tham gia các buổi học trực tuyến.
+            Tìm hiểu cách sử dụng Lớp Học Đổi Mới — từ việc đăng ký khóa học, theo dõi tiến độ học tập đến tham gia các buổi học trực tuyến.
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

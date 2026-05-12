@@ -7,7 +7,7 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-const SYSTEM_PROMPT = `Bạn là trợ lý AI thông minh của hệ thống học trực tuyến VanAnh LMS. Hãy giúp học viên và giảng viên với các câu hỏi về khóa học, học tập, lập trình, và các vấn đề học thuật. Trả lời ngắn gọn, dễ hiểu, thân thiện và chính xác. Hỗ trợ cả tiếng Việt và tiếng Anh.`;
+const SYSTEM_PROMPT = `Bạn là trợ lý AI thông minh của hệ thống học trực tuyến Lớp Học Đổi Mới. Hãy giúp học viên và giáo viên với các câu hỏi về khóa học, học tập, lập trình, và các vấn đề học thuật. Trả lời ngắn gọn, dễ hiểu, thân thiện và chính xác. Hỗ trợ cả tiếng Việt và tiếng Anh.`;
 
 export default function AiChat() {
   const { t, lang } = useContext(LangContext);
@@ -49,7 +49,7 @@ export default function AiChat() {
       },
       {
         role: 'model',
-        parts: [{ text: lang === 'vi' ? 'Xin chào! Tôi là trợ lý AI của VanAnh LMS. Tôi có thể giúp gì cho bạn?' : 'Hello! I am VanAnh LMS AI assistant. How can I help you?' }],
+        parts: [{ text: lang === 'vi' ? 'Xin chào! Tôi là trợ lý AI của Lớp Học Đổi Mới. Tôi có thể giúp gì cho bạn?' : 'Hello! I am Lớp Học Đổi Mới AI assistant. How can I help you?' }],
       },
       ...newMessages.map((m) => ({
         role: m.role === 'user' ? 'user' : 'model',
