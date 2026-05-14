@@ -699,6 +699,56 @@ a:hover { color: var(--primary-dark); }
   .nav-brand-text { display: none; }
 }
 
+/* ─── LEARNING PAGE LAYOUT ──────────────────────── */
+.learning-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.learning-content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 2rem;
+  transition: var(--transition);
+}
+
+.learning-sidebar {
+  width: 350px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+@media (max-width: 1024px) {
+  .learning-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .learning-content {
+    padding: 1rem;
+    overflow-y: visible;
+    flex: none;
+  }
+  .learning-sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    flex: none;
+  }
+  .learning-header-actions {
+    min-width: 0 !important;
+    flex: 1;
+  }
+}
+
+
 
 
 .nav-mobile-overlay {

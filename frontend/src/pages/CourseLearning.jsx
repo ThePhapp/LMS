@@ -51,6 +51,7 @@ const CourseLearning = () => {
   const [replyContent, setReplyContent] = useState('');
   const [showCompleteToast, setShowCompleteToast] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 1024);
 
   useEffect(() => {
     fetchCourseAndProgress();
@@ -174,18 +175,23 @@ const CourseLearning = () => {
           <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{course.title}</div>
         </div>
         
-        {user?.role === 'student' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '300px' }}>
-            <FunProgressBar pct={progressPct} />
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="learning-header-actions">
+          {user?.role === 'student' && (
+            <div style={{ flex: 1, minWidth: '150px' }}>
+              <FunProgressBar pct={progressPct} />
+            </div>
+          )}
+          <button className="btn btn-secondary btn-sm" onClick={() => setShowSidebar(!showSidebar)} style={{ whiteSpace: 'nowrap' }}>
+            {showSidebar ? 'Ẩn mục lục' : 'Hiện mục lục'}
+          </button>
+        </div>
       </div>
 
       {/* Main Split Layout */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="learning-layout">
         
         {/* Left: Content Player (70%) */}
-        <div style={{ flex: '1', overflowY: 'auto', background: 'var(--bg)', padding: '2rem' }}>
+        <div className="learning-content">
           {activeLesson ? (
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
               
@@ -477,10 +483,8 @@ const CourseLearning = () => {
         </div>
 
         {/* Right: Sticky Syllabus (30%) */}
-        <div style={{ 
-          width: '350px', background: 'var(--surface)', borderLeft: '1px solid var(--border)', 
-          overflowY: 'auto', display: 'flex', flexDirection: 'column'
-        }}>
+        {showSidebar && (
+          <div className="learning-sidebar">
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', fontWeight: 800, fontSize: '1.1rem' }}>
             Nội dung khoá học
           </div>
@@ -549,6 +553,7 @@ const CourseLearning = () => {
             ))}
           </div>
         </div>
+        )}
       </div>
       <Confetti active={showConfetti} />
       <LessonCompleteToast show={showCompleteToast} onClose={() => setShowCompleteToast(false)} />
