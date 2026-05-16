@@ -136,6 +136,15 @@ async function migrate() {
     `);
     console.log('  + assignments table ready.');
 
+    // New assignment columns for enhanced features
+    await addColumnIfMissing(conn, 'assignments', 'status', "ENUM('draft','published','archived') DEFAULT 'published'");
+    await addColumnIfMissing(conn, 'assignments', 'shuffle_questions', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfMissing(conn, 'assignments', 'shuffle_options', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfMissing(conn, 'assignments', 'time_limit', 'INT NULL COMMENT \'Time limit in minutes\'');
+    await addColumnIfMissing(conn, 'assignments', 'max_attempts', 'INT DEFAULT 1');
+    await addColumnIfMissing(conn, 'assignments', 'allow_resubmit', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfMissing(conn, 'assignments', 'attachment_url', 'VARCHAR(500) NULL');
+
     // assignment_questions table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS assignment_questions (
@@ -149,6 +158,11 @@ async function migrate() {
       )
     `);
     console.log('  + assignment_questions table ready.');
+
+    // New question columns
+    await addColumnIfMissing(conn, 'assignment_questions', 'question_type', "ENUM('multiple_choice','true_false','fill_blank','essay') DEFAULT 'multiple_choice'");
+    await addColumnIfMissing(conn, 'assignment_questions', 'correct_answer', "TEXT NULL COMMENT 'For fill_blank and essay: text answer'");
+    await addColumnIfMissing(conn, 'assignment_questions', 'question_order', 'INT DEFAULT 0');
 
     // assignment_submissions table
     await conn.query(`
@@ -171,6 +185,23 @@ async function migrate() {
     
     // Add file_url column if missing (for existing tables)
     await addColumnIfMissing(conn, 'assignment_submissions', 'file_url', 'VARCHAR(500) NULL');
+    await addColumnIfMissing(conn, 'assignment_submissions', 'attempt_number', 'INT DEFAULT 1');
+
+    // notifications table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        type ENUM('assignment_posted','quiz_posted','submission_received','grade_posted') NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT,
+        reference_id INT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('  + notifications table ready.');
 
     // lesson_progress table
     await conn.query(`

@@ -20,11 +20,26 @@ router.post('/course/:courseId', auth, authorize('lecturer', 'admin'), assignmen
 // Get grades for a course (Gradebook)
 router.get('/course/:courseId/grades', auth, authorize('lecturer', 'admin'), assignmentController.getCourseGrades);
 
-// Get, Submit, and Delete a specific assignment
+// Notifications
+router.get('/notifications', auth, assignmentController.getNotifications);
+router.put('/notifications/:notifId/read', auth, assignmentController.markNotificationRead);
+
+// Get all assignments for current student
+router.get('/my', auth, assignmentController.getMyAllAssignments);
+
+
+// Get, Submit, Update, and Delete a specific assignment
 router.route('/:id')
   .get(auth, assignmentController.getAssignmentById)
   .post(auth, upload.single('file'), assignmentController.submitAssignment)
+  .put(auth, authorize('lecturer', 'admin'), assignmentController.updateAssignment)
   .delete(auth, authorize('lecturer', 'admin'), assignmentController.deleteAssignment);
+
+// Assignment statistics
+router.get('/:id/stats', auth, authorize('lecturer', 'admin'), assignmentController.getAssignmentStats);
+
+// Student's own submissions for an assignment
+router.get('/:id/my-submissions', auth, assignmentController.getMySubmissions);
 
 // Add Question to a Quiz assignment
 router.post('/:id/questions', auth, authorize('lecturer', 'admin'), assignmentController.addQuestion);

@@ -542,7 +542,7 @@ const CourseLearning = () => {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '0.9rem', fontWeight: isActive ? 700 : 500, color: 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                            Bài tập / Quiz
+                            {assignment.title || 'Bài tập / Quiz'}
                           </div>
                         </div>
                       </div>

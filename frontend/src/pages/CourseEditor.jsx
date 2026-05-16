@@ -44,8 +44,10 @@ const CourseEditor = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [assignmentForm, setAssignmentForm] = useState({
-    title: '', description: '', type: 'essay', total_points: 100, due_date: ''
+    title: '', description: '', type: 'essay', total_points: 100, due_date: '',
+    time_limit: '', max_attempts: 1, allow_resubmit: false, shuffle_questions: false, shuffle_options: false, status: 'published'
   });
+  const [assignmentTab, setAssignmentTab] = useState('basic');
 
   // Quiz Builder State
   const [showQuizBuilder, setShowQuizBuilder] = useState(false);
@@ -238,16 +240,25 @@ const CourseEditor = () => {
   const openAssignmentModal = (chapterId, assignment = null) => {
     setCurrentChapterId(chapterId);
     setEditingAssignment(assignment);
+    setAssignmentTab('basic');
     if (assignment) {
       setAssignmentForm({
         title: assignment.title,
         description: assignment.description || '',
         type: assignment.type || 'essay',
         total_points: assignment.total_points || 100,
-        due_date: assignment.due_date ? assignment.due_date.substring(0, 16) : ''
+        due_date: assignment.due_date ? assignment.due_date.substring(0, 16) : '',
+        time_limit: assignment.time_limit || '',
+        max_attempts: assignment.max_attempts !== undefined ? assignment.max_attempts : 1,
+        allow_resubmit: !!assignment.allow_resubmit,
+        shuffle_questions: !!assignment.shuffle_questions,
+        shuffle_options: !!assignment.shuffle_options,
+        status: assignment.status || 'published'
       });
     } else {
-      setAssignmentForm({ title: '', description: '', type: 'essay', total_points: 100, due_date: '' });
+      setAssignmentForm({ title: '', description: '', type: 'essay', total_points: 100, due_date: '',
+        time_limit: '', max_attempts: 1, allow_resubmit: false, shuffle_questions: false, shuffle_options: false, status: 'published'
+      });
     }
     setShowAssignmentModal(true);
   };
@@ -269,7 +280,13 @@ const CourseEditor = () => {
         chapter_id: currentChapterId,
         type: assignmentForm.type,
         total_points: assignmentForm.total_points,
-        due_date: assignmentForm.due_date || null
+        due_date: assignmentForm.due_date || null,
+        time_limit: assignmentForm.time_limit ? parseInt(assignmentForm.time_limit) : null,
+        max_attempts: parseInt(assignmentForm.max_attempts) || 1,
+        allow_resubmit: !!assignmentForm.allow_resubmit,
+        shuffle_questions: !!assignmentForm.shuffle_questions,
+        shuffle_options: !!assignmentForm.shuffle_options,
+        status: assignmentForm.status || 'published'
       };
 
       if (editingAssignment) {
@@ -894,98 +911,127 @@ const CourseEditor = () => {
               <X size={20} />
             </button>
 
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-              {editingAssignment ? 'Chỉnh sửa bài tập' : 'Thêm bài tập / Quiz mới'}
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>
+              {editingAssignment ? 'Chỉnh sửa bài tập / Quiz' : 'Thêm bài tập / Quiz mới'}
             </h2>
 
+            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+              <button 
+                type="button" 
+                style={{ background: 'none', border: 'none', padding: '0.5rem 1rem', borderBottom: assignmentTab === 'basic' ? '2px solid var(--primary)' : '2px solid transparent', color: assignmentTab === 'basic' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setAssignmentTab('basic')}
+              >
+                Thông tin cơ bản
+              </button>
+              <button 
+                type="button" 
+                style={{ background: 'none', border: 'none', padding: '0.5rem 1rem', borderBottom: assignmentTab === 'settings' ? '2px solid var(--primary)' : '2px solid transparent', color: assignmentTab === 'settings' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setAssignmentTab('settings')}
+              >
+                Cài đặt nâng cao
+              </button>
+            </div>
+
             <form onSubmit={saveAssignmentForm}>
-              <div className="form-group">
-                <label className="form-label">Tiêu đề bài tập *</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  required 
-                  value={assignmentForm.title}
-                  onChange={e => setAssignmentForm({...assignmentForm, title: e.target.value})}
-                  placeholder="VD: Bài tập về React Hooks"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Mô tả</label>
-                <textarea 
-                  className="form-textarea" 
-                  rows="4"
-                  value={assignmentForm.description}
-                  onChange={e => setAssignmentForm({...assignmentForm, description: e.target.value})}
-                  placeholder="Hướng dẫn và yêu cầu cho bài tập..."
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Loại bài tập</label>
-                <div style={{ display: 'flex', gap: '1.5rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              {assignmentTab === 'basic' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Tiêu đề bài tập *</label>
                     <input 
-                      type="radio" 
-                      name="assignment-type"
-                      checked={assignmentForm.type === 'essay'}
-                      onChange={() => setAssignmentForm({...assignmentForm, type: 'essay'})}
+                      type="text" className="form-input" required 
+                      value={assignmentForm.title} onChange={e => setAssignmentForm({...assignmentForm, title: e.target.value})}
+                      placeholder="VD: Bài tập về React Hooks"
                     />
-                    <FileText size={16} />
-                    <span>Essay / Tự luận</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" 
-                      name="assignment-type"
-                      checked={assignmentForm.type === 'quiz'}
-                      onChange={() => setAssignmentForm({...assignmentForm, type: 'quiz'})}
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Mô tả</label>
+                    <textarea 
+                      className="form-textarea" rows="4"
+                      value={assignmentForm.description} onChange={e => setAssignmentForm({...assignmentForm, description: e.target.value})}
+                      placeholder="Hướng dẫn và yêu cầu cho bài tập..."
                     />
-                    <ClipboardList size={16} />
-                    <span>Quiz / Trắc nghiệm</span>
-                  </label>
-                </div>
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  {assignmentForm.type === 'quiz' ? 
-                    '💡 Sau khi tạo quiz, nhấn "Soạn câu hỏi" để mở trình soạn câu hỏi trắc nghiệm' : 
-                    '💡 Học viên sẽ upload file hoặc nhập văn bản để nộp bài'}
-                </small>
-              </div>
+                  </div>
 
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      Tổng điểm
-                    </span>
-                  </label>
-                  <input 
-                    type="number" 
-                    className="form-input"
-                    min="1"
-                    max="1000"
-                    value={assignmentForm.total_points}
-                    onChange={e => setAssignmentForm({...assignmentForm, total_points: e.target.value})}
-                    placeholder="100"
-                  />
-                </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Loại bài tập</label>
+                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.75rem', border: assignmentForm.type === 'essay' ? '2px solid var(--primary)' : '1px solid var(--border)', borderRadius: '8px', flex: 1, background: assignmentForm.type === 'essay' ? 'var(--primary-light)' : 'transparent' }}>
+                        <input type="radio" name="assignment-type" checked={assignmentForm.type === 'essay'} onChange={() => setAssignmentForm({...assignmentForm, type: 'essay'})} style={{ display: 'none' }} />
+                        <FileText size={20} color={assignmentForm.type === 'essay' ? 'var(--primary)' : 'var(--text-muted)'} />
+                        <div>
+                          <div style={{ fontWeight: 600, color: assignmentForm.type === 'essay' ? 'var(--primary-dark)' : 'inherit' }}>Tự luận / Tải file</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Học viên gõ văn bản hoặc tải file lên</div>
+                        </div>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.75rem', border: assignmentForm.type === 'quiz' ? '2px solid var(--success)' : '1px solid var(--border)', borderRadius: '8px', flex: 1, background: assignmentForm.type === 'quiz' ? '#f0fdf4' : 'transparent' }}>
+                        <input type="radio" name="assignment-type" checked={assignmentForm.type === 'quiz'} onChange={() => setAssignmentForm({...assignmentForm, type: 'quiz'})} style={{ display: 'none' }} />
+                        <ClipboardList size={20} color={assignmentForm.type === 'quiz' ? 'var(--success)' : 'var(--text-muted)'} />
+                        <div>
+                          <div style={{ fontWeight: 600, color: assignmentForm.type === 'quiz' ? '#166534' : 'inherit' }}>Quiz Trắc nghiệm</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Câu hỏi trắc nghiệm, đúng/sai, điền từ</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
 
-                <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label">
-                    <Calendar size={14} style={{ display: 'inline', marginRight: '0.25rem' }} />
-                    Hạn nộp
-                  </label>
-                  <input 
-                    type="datetime-local" 
-                    className="form-input"
-                    value={assignmentForm.due_date}
-                    onChange={e => setAssignmentForm({...assignmentForm, due_date: e.target.value})}
-                  />
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label">Tổng điểm</label>
+                      <input type="number" className="form-input" min="1" max="1000" value={assignmentForm.total_points} onChange={e => setAssignmentForm({...assignmentForm, total_points: e.target.value})} placeholder="100" />
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label"><Calendar size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Hạn nộp</label>
+                      <input type="datetime-local" className="form-input" value={assignmentForm.due_date} onChange={e => setAssignmentForm({...assignmentForm, due_date: e.target.value})} />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              {assignmentTab === 'settings' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Trạng thái</label>
+                    <select className="form-select" value={assignmentForm.status} onChange={e => setAssignmentForm({...assignmentForm, status: e.target.value})}>
+                      <option value="published">Đã xuất bản (Sinh viên có thể thấy)</option>
+                      <option value="draft">Bản nháp (Ẩn với sinh viên)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label">Giới hạn thời gian (phút)</label>
+                      <input type="number" className="form-input" min="1" value={assignmentForm.time_limit} onChange={e => setAssignmentForm({...assignmentForm, time_limit: e.target.value})} placeholder="VD: 45 (Bỏ trống nếu không giới hạn)" />
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label">Số lần làm bài tối đa</label>
+                      <input type="number" className="form-input" min="0" value={assignmentForm.max_attempts} onChange={e => setAssignmentForm({...assignmentForm, max_attempts: e.target.value})} placeholder="VD: 1 (Điền 0 nếu không giới hạn)" />
+                    </div>
+                  </div>
+
+                  {assignmentForm.type === 'quiz' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}>
+                        <input type="checkbox" checked={assignmentForm.shuffle_questions} onChange={e => setAssignmentForm({...assignmentForm, shuffle_questions: e.target.checked})} style={{ width: '1.2rem', height: '1.2rem' }} />
+                        Xáo trộn thứ tự câu hỏi
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}>
+                        <input type="checkbox" checked={assignmentForm.shuffle_options} onChange={e => setAssignmentForm({...assignmentForm, shuffle_options: e.target.checked})} style={{ width: '1.2rem', height: '1.2rem' }} />
+                        Xáo trộn các đáp án trong câu hỏi
+                      </label>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}>
+                        <input type="checkbox" checked={assignmentForm.allow_resubmit} onChange={e => setAssignmentForm({...assignmentForm, allow_resubmit: e.target.checked})} style={{ width: '1.2rem', height: '1.2rem' }} />
+                        Cho phép nộp lại bài khi chưa chấm điểm
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                 <button type="button" className="btn btn-ghost" onClick={closeAssignmentModal}>Hủy</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Đang lưu...' : (editingAssignment ? 'Cập nhật' : 'Tạo bài tập')}

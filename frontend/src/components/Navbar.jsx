@@ -2,8 +2,8 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { LangContext } from '../contexts/LangContext';
-import { GraduationCap, BookOpen, LogOut, MessageSquare, User, ChevronDown, Globe, Calendar, Menu, X } from 'lucide-react';
-import { assetUrl } from '../services/api';
+import { GraduationCap, BookOpen, LogOut, MessageSquare, User, ChevronDown, Globe, Calendar, Menu, X, Bell } from 'lucide-react';
+import api, { assetUrl } from '../services/api';
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -13,8 +13,38 @@ const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const userMenuRef = useRef(null);
   const langMenuRef = useRef(null);
+  const notifMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 60000); // Polling every minute
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/assignments/notifications');
+      setNotifications(res.data.notifications || []);
+      setUnreadCount(res.data.unread_count || 0);
+    } catch (error) {
+      console.error('Lỗi lấy thông báo', error);
+    }
+  };
+
+  const markAsRead = async (id = 'all') => {
+    try {
+      await api.put(`/assignments/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (e) {}
+  };
 
   const handleLogout = () => {
     logout();
@@ -48,6 +78,9 @@ const Navbar = () => {
       }
       if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
         setShowLangMenu(false);
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(event.target)) {
+        setShowNotifMenu(false);
       }
     };
 
@@ -201,6 +234,95 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+
+            {/* Notifications Menu */}
+            {user && (
+              <div style={{ position: 'relative', marginLeft: '0.5rem' }} ref={notifMenuRef}>
+                <button 
+                  onClick={() => setShowNotifMenu(!showNotifMenu)}
+                  className="btn btn-ghost btn-sm"
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '0.4rem' }}
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: 0, right: 0,
+                      background: 'var(--danger)', color: '#fff',
+                      fontSize: '0.65rem', fontWeight: 700,
+                      borderRadius: '50%', width: '16px', height: '16px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transform: 'translate(25%, -25%)'
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                
+                {showNotifMenu && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 0.5rem)',
+                    right: 0,
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    width: '320px',
+                    zIndex: 1000,
+                    overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column',
+                    maxHeight: '400px'
+                  }}>
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Thông báo</span>
+                      {unreadCount > 0 && (
+                        <button onClick={() => markAsRead('all')} className="btn btn-ghost btn-sm" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>
+                          Đánh dấu đã đọc
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ overflowY: 'auto', flex: 1 }}>
+                      {notifications.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Không có thông báo mới</div>
+                      ) : (
+                        notifications.map(n => (
+                          <div 
+                            key={n.id} 
+                            style={{ 
+                              padding: '0.75rem 1rem', 
+                              borderBottom: '1px solid var(--border)', 
+                              background: n.is_read ? 'transparent' : 'var(--primary-light)',
+                              cursor: 'pointer',
+                              display: 'flex', flexDirection: 'column', gap: '0.25rem'
+                            }}
+                            onClick={() => {
+                              if (!n.is_read) markAsRead(n.id);
+                              // Can add navigate based on notification type here
+                              if (n.type === 'grade_posted' || n.type === 'quiz_posted' || n.type === 'assignment_posted') {
+                                navigate(`/assignments/${n.reference_id}`);
+                              } else if (n.type === 'submission_received') {
+                                navigate(`/instructor/assignment/${n.reference_id}/grading`);
+                              }
+                              setShowNotifMenu(false);
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <strong style={{ fontSize: '0.85rem', color: n.is_read ? 'var(--text)' : 'var(--primary-dark)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                {n.title}
+                              </strong>
+                            </div>
+                            {n.message && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{n.message}</div>}
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
+                              {new Date(n.created_at).toLocaleString('vi-VN')}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* User Menu - Only when logged in */}
             {user && (

@@ -9,18 +9,22 @@ const Dashboard = () => {
   const { user } = useContext(AuthContext);
   const [enrollments, setEnrollments] = useState([]);
   const [allCourses, setAllCourses] = useState([]);
+  const [myAssignments, setMyAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assignmentFilter, setAssignmentFilter] = useState('all'); // all, pending, submitted, overdue
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (user?.role === 'student') {
-          const [enrRes, allRes] = await Promise.all([
+          const [enrRes, allRes, assignRes] = await Promise.all([
             api.get('/enrollments/my'),
-            api.get('/courses')
+            api.get('/courses'),
+            api.get('/assignments/my')
           ]);
           setEnrollments(enrRes.data);
           setAllCourses(allRes.data);
+          setMyAssignments(assignRes.data || []);
         } else {
           const res = await api.get('/courses');
           const mine = res.data.filter(c => c.lecturer_id === user.id);
@@ -133,6 +137,69 @@ const Dashboard = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* ASSIGNMENTS SECTION */}
+              <div className="page-header" style={{ marginTop: '3rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Bài tập & Quiz</h2>
+                  <p className="page-subtitle">Danh sách các bài tập cần hoàn thành</p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className={`btn btn-sm ${assignmentFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setAssignmentFilter('all')}>Tất cả</button>
+                  <button className={`btn btn-sm ${assignmentFilter === 'pending' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setAssignmentFilter('pending')}>Chưa làm</button>
+                  <button className={`btn btn-sm ${assignmentFilter === 'submitted' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setAssignmentFilter('submitted')}>Đã nộp</button>
+                  <button className={`btn btn-sm ${assignmentFilter === 'overdue' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setAssignmentFilter('overdue')}>Quá hạn</button>
+                </div>
+              </div>
+
+              {myAssignments.length === 0 ? (
+                <div className="empty-state card" style={{ padding: '2rem' }}>
+                  <div className="empty-state-icon">📋</div>
+                  <h3>Không có bài tập nào</h3>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {myAssignments.filter(a => {
+                    const isOverdue = a.due_date && new Date() > new Date(a.due_date);
+                    const isSubmitted = a.submission_count > 0;
+                    if (assignmentFilter === 'pending') return !isSubmitted && !isOverdue;
+                    if (assignmentFilter === 'submitted') return isSubmitted;
+                    if (assignmentFilter === 'overdue') return isOverdue && !isSubmitted;
+                    return true;
+                  }).map(a => {
+                    const isOverdue = a.due_date && new Date() > new Date(a.due_date);
+                    return (
+                      <div key={a.id} className="card" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem' }}>
+                            <Link to={`/assignments/${a.id}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>{a.title}</Link>
+                            <span className={`badge ${a.type === 'quiz' ? 'badge-primary' : 'badge-warning'}`} style={{ marginLeft: '0.5rem' }}>{a.type}</span>
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            Khóa học: {a.course_title} • Điểm: {a.total_points}
+                            {a.due_date && <span> • Hạn: <strong style={{ color: isOverdue ? 'var(--danger)' : 'inherit' }}>{new Date(a.due_date).toLocaleString('vi-VN')}</strong></span>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          {a.submission_count > 0 ? (
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontWeight: 600, color: a.best_score !== null ? 'var(--success)' : 'var(--warning)' }}>
+                                {a.best_score !== null ? `${a.best_score}/${a.total_points} điểm` : 'Đang chấm...'}
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Đã nộp</div>
+                            </div>
+                          ) : isOverdue ? (
+                            <span className="badge badge-error">Quá hạn</span>
+                          ) : (
+                            <span className="badge badge-ghost">Chưa làm</span>
+                          )}
+                          <Link to={`/assignments/${a.id}`} className="btn btn-secondary btn-sm">Xem chi tiết</Link>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
