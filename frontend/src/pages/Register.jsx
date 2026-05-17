@@ -48,7 +48,7 @@ const Register = () => {
           <div className="form-group">
             <label className="form-label">Họ và tên</label>
             <input id="reg-name" type="text" className="form-input" value={form.name}
-              onChange={e => set('name', e.target.value)} required placeholder="Nguyễn Văn An" />
+              onChange={e => set('name', e.target.value)} required placeholder="Nguyễn Văn A" />
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>

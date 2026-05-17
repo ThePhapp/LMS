@@ -68,7 +68,7 @@ const Login = () => {
         <hr className="divider" />
         <p style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Chưa có tài khoản?{' '}
-          <Link to="/register" style={{ fontWeight: 600 }}>Tạo tài khoản miễn phí</Link>
+          <Link to="/register" style={{ fontWeight: 600 }}>Tạo tài khoản</Link>
         </p>
       </div>
     </div>

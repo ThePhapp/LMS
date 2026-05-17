@@ -5,7 +5,7 @@ import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { User, Mail, Shield, Camera, Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
-const ROLE_LABELS = { student: 'Học viên / Student', lecturer: 'Giảng viên / Lecturer', admin: 'Quản trị viên / Admin' };
+const ROLE_LABELS = { student: 'Học viên / Student', lecturer: 'Giáo viên / Lecturer', admin: 'Quản trị viên / Admin' };
 const ROLE_COLORS = { student: 'var(--primary)', lecturer: 'var(--warning)', admin: 'var(--error)' };
 
 const Profile = () => {
