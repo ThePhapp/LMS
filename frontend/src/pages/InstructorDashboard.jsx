@@ -5,7 +5,7 @@ import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { Plus, Edit, Trash2, BarChart2, Book, Users, Star, Eye, GraduationCap } from 'lucide-react';
 
-const CATEGORY_LABELS = { Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên & XH', Music: 'Âm nhạc', Arts: 'Mỹ thuật', PE: 'Thể dục' };
+const CATEGORY_LABELS = { Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên & XH', Science: 'Khoa học', Music: 'Âm nhạc', Arts: 'Mỹ thuật', PE: 'Thể dục' };
 const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 
 const InstructorDashboard = () => {
