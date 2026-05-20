@@ -40,28 +40,38 @@ exports.createLesson = async (req, res) => {
         file_type = 'package';
         file_name = originalName;
 
-        // Ensure public/packages directory exists
-        const packagesRootDir = path.join(__dirname, '../public/packages');
-        await fs.mkdir(packagesRootDir, { recursive: true });
+        // Import upload function
+        const { uploadDirectoryToStorage } = require('../config/storage');
 
-        // Create extraction directory
-        const packageDir = path.join(packagesRootDir, `lesson-${Date.now()}`);
-        
-        console.log('Extracting package to:', packageDir);
+        // Extract to temporary directory
+        const tempPackageDir = path.join(__dirname, '../uploads/tmp', `lesson-pkg-${Date.now()}`);
+        await fs.mkdir(tempPackageDir, { recursive: true });
+
+        console.log('Extracting package to temporary dir:', tempPackageDir);
 
         // Extract ZIP
-        const extractResult = await extractPackageFromFile(req.file.path, packageDir);
+        const extractResult = await extractPackageFromFile(req.file.path, tempPackageDir);
         
         console.log('Extract result:', extractResult);
         
         if (!extractResult.success) {
-          await cleanupPackage(packageDir);
+          await cleanupPackage(tempPackageDir);
           return res.status(400).json({ message: `Package extraction failed: ${extractResult.error}` });
         }
 
-        // Generate package URL (relative path from public folder)
-        package_url = getPackageUrl(path.basename(packageDir), extractResult.indexPath);
-        file_url = package_url; // Store as file_url for now
+        // Upload to Cloudflare R2
+        const s3FolderPrefix = `packages/lesson-${Date.now()}`;
+        console.log(`Uploading package to R2: ${s3FolderPrefix}...`);
+        const r2PrefixUrl = await uploadDirectoryToStorage(tempPackageDir, s3FolderPrefix);
+        
+        // Find relative path to index.html inside the extracted folder
+        const relativeIndexPath = path.relative(tempPackageDir, extractResult.indexPath).split(path.sep).join('/');
+        
+        package_url = `${r2PrefixUrl}/${relativeIndexPath}`;
+        file_url = package_url; // Store full R2 URL as file_url
+        
+        // Clean up temporary local directory
+        await cleanupPackage(tempPackageDir);
       } else {
         // Handle regular files
         const storageName = `lesson-${Date.now()}${ext}`;
@@ -110,25 +120,34 @@ exports.updateLesson = async (req, res) => {
         file_name = originalName;
 
         try {
-          // Clean up old package if exists
-          if (lesson[0].file_type === 'package' && lesson[0].file_url) {
-          await cleanupPackage(path.join(__dirname, '../public/packages', lesson[0].file_url.split('/packages/')[1].split('/')[0]));
-        }
+          const { uploadDirectoryToStorage } = require('../config/storage');
+          
+          // Clean up old package if exists (local only for now)
+          if (lesson[0].file_type === 'package' && lesson[0].file_url && lesson[0].file_url.startsWith('/packages/')) {
+            await cleanupPackage(path.join(__dirname, '../public/packages', lesson[0].file_url.split('/packages/')[1].split('/')[0]));
+          }
 
           // Create new extraction directory
-          const packageDir = path.join(__dirname, '../public/packages', `lesson-${Date.now()}`);
-          await fs.mkdir(packageDir, { recursive: true });
+          const tempPackageDir = path.join(__dirname, '../uploads/tmp', `lesson-pkg-${Date.now()}`);
+          await fs.mkdir(tempPackageDir, { recursive: true });
 
           // Extract ZIP
-          const extractResult = await extractPackageFromFile(req.file.path, packageDir);
+          const extractResult = await extractPackageFromFile(req.file.path, tempPackageDir);
           
           if (!extractResult.success) {
-            await cleanupPackage(packageDir);
+            await cleanupPackage(tempPackageDir);
             return res.status(400).json({ message: `Package extraction failed: ${extractResult.error}` });
           }
 
-          // Generate package URL
-          file_url = getPackageUrl(path.basename(packageDir), extractResult.indexPath);
+          // Upload to Cloudflare R2
+          const s3FolderPrefix = `packages/lesson-${Date.now()}`;
+          const r2PrefixUrl = await uploadDirectoryToStorage(tempPackageDir, s3FolderPrefix);
+          
+          const relativeIndexPath = path.relative(tempPackageDir, extractResult.indexPath).split(path.sep).join('/');
+          file_url = `${r2PrefixUrl}/${relativeIndexPath}`;
+          
+          // Clean up temporary local directory
+          await cleanupPackage(tempPackageDir);
         } catch (error) {
           return res.status(500).json({ message: `Failed to process package: ${error.message}` });
         }
