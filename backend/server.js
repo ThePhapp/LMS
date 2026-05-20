@@ -37,6 +37,29 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   }
 }));
 
+// Serve extracted web packages
+app.use('/packages', express.static(path.join(__dirname, 'public/packages'), {
+  setHeaders(res, filePath) {
+    // Allow iframe embedding from frontend
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:5173 http://localhost:3000");
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    // Explicitly set MIME types for e-learning files
+    const ext = path.extname(filePath).toLowerCase();
+    const packageMimeMap = {
+      '.xml': 'application/xml',
+      '.xsd': 'application/xml',
+      '.dtd': 'application/xml-dtd',
+      '.js': 'application/javascript',
+      '.json': 'application/json'
+    };
+    if (packageMimeMap[ext]) {
+      res.setHeader('Content-Type', packageMimeMap[ext]);
+    }
+  }
+}));
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/courses', require('./routes/courses'));

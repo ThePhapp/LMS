@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const path = require('path');
-const { uploadToStorage } = require('../config/storage');
+const fs = require('fs').promises;
+const { uploadFileToStorage } = require('../config/storage');
+const { extractPackageFromFile, getPackageUrl, cleanupPackage } = require('../utils/zipHandler');
 
 function getFileType(originalname) {
   const ext = originalname.split('.').pop().toLowerCase();
@@ -9,27 +11,64 @@ function getFileType(originalname) {
   if (['pptx', 'ppt'].includes(ext)) return 'pptx';
   if (['docx', 'doc'].includes(ext)) return 'docx';
   if (['xlsx', 'xls'].includes(ext)) return 'xlsx';
+  if (ext === 'zip') return 'package';
   return 'document';
+}
+
+function isZipFile(originalname) {
+  const ext = originalname.split('.').pop().toLowerCase();
+  return ext === 'zip';
 }
 
 exports.createLesson = async (req, res) => {
   const { course_id, chapter_id, title, content, video_url, lesson_order, duration } = req.body;
-  let file_url = null, file_name = null, file_type = null;
-
-  if (req.file) {
-    const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
-    const ext = path.extname(originalName).toLowerCase();
-    const storageName = `lesson-${Date.now()}${ext}`;
-    file_url = await uploadToStorage(req.file.buffer, 'lesson-files', storageName, req.file.mimetype);
-    file_name = originalName;
-    file_type = getFileType(originalName);
-  }
+  let file_url = null, file_name = null, file_type = null, package_url = null;
 
   try {
     const [course] = await db.query('SELECT lecturer_id FROM courses WHERE id = ?', [course_id]);
     if (course.length === 0) return res.status(404).json({ message: 'Course not found' });
     if (course[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (req.file) {
+      const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+      const ext = path.extname(originalName).toLowerCase();
+
+      // Handle ZIP packages
+      if (isZipFile(originalName)) {
+        file_type = 'package';
+        file_name = originalName;
+
+        // Ensure public/packages directory exists
+        const packagesRootDir = path.join(__dirname, '../public/packages');
+        await fs.mkdir(packagesRootDir, { recursive: true });
+
+        // Create extraction directory
+        const packageDir = path.join(packagesRootDir, `lesson-${Date.now()}`);
+        
+        console.log('Extracting package to:', packageDir);
+
+        // Extract ZIP
+        const extractResult = await extractPackageFromFile(req.file.path, packageDir);
+        
+        console.log('Extract result:', extractResult);
+        
+        if (!extractResult.success) {
+          await cleanupPackage(packageDir);
+          return res.status(400).json({ message: `Package extraction failed: ${extractResult.error}` });
+        }
+
+        // Generate package URL (relative path from public folder)
+        package_url = getPackageUrl(path.basename(packageDir), extractResult.indexPath);
+        file_url = package_url; // Store as file_url for now
+      } else {
+        // Handle regular files
+        const storageName = `lesson-${Date.now()}${ext}`;
+        file_url = await uploadFileToStorage(req.file.path, 'lesson-files', storageName, req.file.mimetype);
+        file_name = originalName;
+        file_type = getFileType(originalName);
+      }
     }
 
     const [result] = await db.query(
@@ -39,10 +78,14 @@ exports.createLesson = async (req, res) => {
 
     res.status(201).json({
       id: result[0].id, course_id, chapter_id, title, content, video_url, file_url, file_name, file_type,
-      lesson_order: lesson_order || 0, duration
+      lesson_order: lesson_order || 0, duration, package_url: file_type === 'package' ? file_url : null
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  } finally {
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
   }
 };
 
@@ -56,13 +99,46 @@ exports.updateLesson = async (req, res) => {
     }
 
     let file_url = lesson[0].file_url, file_name = lesson[0].file_name, file_type = lesson[0].file_type;
+    
     if (req.file) {
       const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
       const ext = path.extname(originalName).toLowerCase();
-      const storageName = `lesson-${Date.now()}${ext}`;
-      file_url = await uploadToStorage(req.file.buffer, 'lesson-files', storageName, req.file.mimetype);
-      file_name = originalName;
-      file_type = getFileType(originalName);
+
+      // Handle ZIP packages
+      if (isZipFile(originalName)) {
+        file_type = 'package';
+        file_name = originalName;
+
+        try {
+          // Clean up old package if exists
+          if (lesson[0].file_type === 'package' && lesson[0].file_url) {
+          await cleanupPackage(path.join(__dirname, '../public/packages', lesson[0].file_url.split('/packages/')[1].split('/')[0]));
+        }
+
+          // Create new extraction directory
+          const packageDir = path.join(__dirname, '../public/packages', `lesson-${Date.now()}`);
+          await fs.mkdir(packageDir, { recursive: true });
+
+          // Extract ZIP
+          const extractResult = await extractPackageFromFile(req.file.path, packageDir);
+          
+          if (!extractResult.success) {
+            await cleanupPackage(packageDir);
+            return res.status(400).json({ message: `Package extraction failed: ${extractResult.error}` });
+          }
+
+          // Generate package URL
+          file_url = getPackageUrl(path.basename(packageDir), extractResult.indexPath);
+        } catch (error) {
+          return res.status(500).json({ message: `Failed to process package: ${error.message}` });
+        }
+      } else {
+        // Handle regular files
+        const storageName = `lesson-${Date.now()}${ext}`;
+        file_url = await uploadFileToStorage(req.file.path, 'lesson-files', storageName, req.file.mimetype);
+        file_name = originalName;
+        file_type = getFileType(originalName);
+      }
     }
 
     await db.query(
@@ -78,9 +154,13 @@ exports.updateLesson = async (req, res) => {
         req.params.id
       ]
     );
-    res.json({ message: 'Lesson updated' });
+    res.json({ message: 'Lesson updated', package_url: file_type === 'package' ? file_url : null });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  } finally {
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
   }
 };
 
@@ -91,6 +171,21 @@ exports.deleteLesson = async (req, res) => {
     if (lesson[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
+
+    // Clean up package folder if it's a package
+    if (lesson[0].file_type === 'package' && lesson[0].file_url) {
+      try {
+        const packageName = lesson[0].file_url.split('/packages/')[1]?.split('/')[0];
+        if (packageName) {
+          const packagePath = path.join(__dirname, '../public/packages', packageName);
+          await cleanupPackage(packagePath);
+        }
+      } catch (error) {
+        console.error('Error cleaning up package:', error);
+        // Continue with lesson deletion even if cleanup fails
+      }
+    }
+
     await db.query('DELETE FROM lessons WHERE id = ?', [req.params.id]);
     res.json({ message: 'Lesson deleted' });
   } catch (error) {
@@ -123,6 +218,38 @@ exports.getProgressForCourse = async (req, res) => {
       [req.params.courseId, req.user.id]
     );
     res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Get package info for a lesson
+ * Used to determine if package should be opened in iframe or redirect
+ */
+exports.getPackageInfo = async (req, res) => {
+  try {
+    const [lesson] = await db.query(
+      'SELECT id, file_type, file_url, file_name FROM lessons WHERE id = ?',
+      [req.params.lessonId]
+    );
+
+    if (lesson.length === 0) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    const lessonData = lesson[0];
+
+    if (lessonData.file_type !== 'package') {
+      return res.status(400).json({ message: 'This lesson does not have a package' });
+    }
+
+    res.json({
+      packageUrl: lessonData.file_url, // This is like /packages/lesson-12345/index.html
+      fileName: lessonData.file_name,
+      canEmbed: true, // Can be opened in iframe
+      openMethod: 'iframe' // Or 'redirect' depending on frontend preference
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

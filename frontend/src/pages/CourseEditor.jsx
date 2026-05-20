@@ -39,6 +39,7 @@ const CourseEditor = () => {
     title: '', content: '', video_url: '', lesson_order: 0, duration: ''
   });
   const [lessonFile, setLessonFile] = useState(null);
+  const [lessonUploadProgress, setLessonUploadProgress] = useState(0);
 
   // Assignment Modal State
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
@@ -197,11 +198,24 @@ const CourseEditor = () => {
     setCurrentChapterId(null);
     setLessonForm({ title: '', content: '', video_url: '', lesson_order: 0, duration: '' });
     setLessonFile(null);
+    setLessonUploadProgress(0);
   };
 
   const saveLessonForm = async (e) => {
     e.preventDefault();
+    
+    if (lessonFile) {
+      if (lessonFile.size > 500 * 1024 * 1024) {
+        showToast('File quá lớn. Giới hạn tối đa là 500MB.', 'error');
+        return;
+      }
+      if (lessonFile.name.toLowerCase().endsWith('.zip')) {
+        // Option to add specific zip validation on frontend if needed, but size is most important
+      }
+    }
+
     setSaving(true);
+    setLessonUploadProgress(0);
     try {
       const fd = new FormData();
       fd.append('course_id', id);
@@ -213,18 +227,30 @@ const CourseEditor = () => {
       fd.append('duration', lessonForm.duration);
       if (lessonFile) fd.append('file', lessonFile);
 
+      const config = {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.lengthComputable) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setLessonUploadProgress(percentCompleted);
+          }
+        }
+      };
+
       if (editingLesson) {
-        await api.put(`/lessons/${editingLesson.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/lessons/${editingLesson.id}`, fd, config);
       } else {
-        await api.post('/lessons', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/lessons', fd, config);
       }
       
       closeLessonModal();
       fetchCourse();
+      showToast('Đã lưu bài học thành công');
     } catch (err) {
       showToast(err.response?.data?.message || 'Lỗi lưu bài học', 'error');
     } finally {
       setSaving(false);
+      setLessonUploadProgress(0);
     }
   };
 
@@ -825,17 +851,20 @@ const CourseEditor = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Tài liệu đính kèm (PDF, Video, ...)</label>
+                <label className="form-label">Tài liệu đính kèm (PDF, Video, ZIP Package, ...)</label>
                 <label className="form-file-label">
                   <Upload size={20} />
                   <span>{lessonFile ? lessonFile.name : 'Nhấn để chọn file'}</span>
                   <input 
                     type="file" 
                     className="form-file-input"
-                    accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xlsx,.xls,.mp4,.webm,.mov,.avi,.mkv,.mp3,.wav,.jpg,.jpeg,.png,.gif,.webp,.svg"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xlsx,.xls,.mp4,.webm,.mov,.avi,.mkv,.mp3,.wav,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip"
                     onChange={e => setLessonFile(e.target.files[0])}
                   />
                 </label>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'block', marginTop: '0.5rem' }}>
+                  📦 Hỗ trợ: PDF, Video, Audio, Hình ảnh, Document, và <strong>ZIP Package</strong> (Figma export, web app, v.v.) - Max 500MB
+                </small>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -863,11 +892,23 @@ const CourseEditor = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-ghost" onClick={closeLessonModal}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Đang lưu...' : (editingLesson ? 'Cập nhật' : 'Tạo bài học')}
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+                {saving && lessonUploadProgress > 0 && (
+                  <div style={{ width: '100%', background: 'var(--surface-2)', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: 'var(--primary)', width: `${lessonUploadProgress}%`, transition: 'width 0.2s ease-out' }} />
+                  </div>
+                )}
+                {saving && lessonUploadProgress > 0 && (
+                  <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Đang tải lên... {lessonUploadProgress}% {lessonUploadProgress === 100 ? '(Đang xử lý, xin chờ...)' : ''}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-ghost" onClick={closeLessonModal} disabled={saving}>Hủy</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                    {saving ? 'Đang lưu...' : (editingLesson ? 'Cập nhật' : 'Tạo bài học')}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

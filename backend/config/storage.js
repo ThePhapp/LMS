@@ -1,4 +1,5 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const fs = require('fs');
 
 const s3 = new S3Client({
   region: 'auto',
@@ -34,6 +35,27 @@ async function uploadToStorage(buffer, folder, filePath, mimeType) {
 }
 
 /**
+ * Upload a local file stream to Cloudflare R2.
+ * @param {string} localPath - Path to the local file
+ * @param {string} folder - Logical folder (e.g. 'lesson-files')
+ * @param {string} filePath - Filename inside folder
+ * @param {string} mimeType - MIME type
+ * @returns {string} Public URL
+ */
+async function uploadFileToStorage(localPath, folder, filePath, mimeType) {
+  const key = `${folder}/${filePath}`;
+
+  await s3.send(new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    Body: fs.createReadStream(localPath),
+    ContentType: mimeType,
+  }));
+
+  return `${R2_PUBLIC_URL}/${key}`;
+}
+
+/**
  * Delete a file from Cloudflare R2
  * @param {string} folder
  * @param {string} filePath
@@ -46,4 +68,4 @@ async function deleteFromStorage(folder, filePath) {
   }));
 }
 
-module.exports = { uploadToStorage, deleteFromStorage };
+module.exports = { uploadToStorage, uploadFileToStorage, deleteFromStorage };

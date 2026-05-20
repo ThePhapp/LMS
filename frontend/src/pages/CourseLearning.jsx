@@ -4,9 +4,10 @@ import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import {
-  FileText, FileVideo, Circle, ArrowLeft, Download, Link2, BookOpen, ClipboardList, Check
+  FileText, FileVideo, Circle, ArrowLeft, Download, Link2, BookOpen, ClipboardList, Check, FileArchive
 } from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
+import PackageViewer from '../components/PackageViewer';
 import { Confetti, FunProgressBar, LessonCompleteToast } from '../components/FunElements';
 import LessonAiChat from '../components/LessonAiChat';
 
@@ -29,6 +30,7 @@ function timeAgo(dateStr) {
 
 function LessonTypeIcon({ lesson }) {
   if (lesson.video_url || lesson.file_type === 'video') return <FileVideo size={14} color="var(--accent)" />;
+  if (lesson.file_type === 'package') return <FileArchive size={14} color="var(--primary)" style={{ fontWeight: 'bold' }} />;
   if (lesson.file_url) return <FileText size={14} color="var(--warning)" />;
   return <BookOpen size={14} color="var(--primary)" />;
 }
@@ -245,6 +247,17 @@ const CourseLearning = () => {
 
                   {activeLesson.file_url && activeLesson.file_type !== 'video' && (
                     <>
+                      {activeLesson.file_type === 'package' && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <PackageViewer
+                            lessonId={activeLesson.id}
+                            fileName={activeLesson.file_name}
+                            packageUrl={activeLesson.file_url}
+                            inline={true}
+                          />
+                        </div>
+                      )}
+
                       {activeLesson.file_type === 'pdf' ? (
                         <div style={{ marginBottom: '1.5rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
