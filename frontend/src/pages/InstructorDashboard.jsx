@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, Edit, Trash2, BarChart2, Book, Users, Star, Eye, GraduationCap } from 'lucide-react';
+import { Plus, Edit, Trash2, BarChart2, Book, Users, Star, Eye, GraduationCap, Search, Filter } from 'lucide-react';
 
 const CATEGORY_LABELS = { Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên & XH', Science: 'Khoa học', HistoryGeography: 'Lịch sử và địa lý', Music: 'Âm nhạc', Arts: 'Mỹ thuật' };
 const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
@@ -11,6 +11,9 @@ const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 const InstructorDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState('my_courses');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -20,17 +23,28 @@ const InstructorDashboard = () => {
       return;
     }
     fetchCourses();
-  }, [user]);
+  }, [user, filterType, categoryFilter]);
 
   const fetchCourses = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/courses');
-      const myCourses = user.role === 'admin'
-        ? res.data
-        : res.data.filter(c => c.lecturer_id === user.id);
-      setCourses(myCourses);
+      const res = await api.get('/courses', { params: { search: searchQuery, category: categoryFilter } });
+      let filtered = res.data;
+      if (user.role !== 'admin') {
+        if (filterType === 'my_courses') {
+          filtered = res.data.filter(c => c.lecturer_id === user.id);
+        } else if (filterType === 'public_courses') {
+          filtered = res.data.filter(c => c.lecturer_id !== user.id);
+        }
+      }
+      setCourses(filtered);
     } catch { }
     finally { setLoading(false); }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchCourses();
   };
 
   const handleDelete = async (id) => {
@@ -87,8 +101,33 @@ const InstructorDashboard = () => {
       </div>
 
       {/* Course Cards */}
-      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Danh sách khóa học ({courses.length})</h3>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Tên khóa học, giáo viên..." 
+              style={{ paddingLeft: '2rem', width: '220px' }}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <select className="form-select" value={filterType} onChange={e => setFilterType(e.target.value)} style={{ width: '180px' }}>
+            <option value="my_courses">Khóa học của tôi</option>
+            <option value="public_courses">Khóa học của GV khác</option>
+            <option value="all">Tất cả khóa học</option>
+          </select>
+          <select className="form-select" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ width: '150px' }}>
+            <option value="All">Tất cả môn học</option>
+            {Object.keys(CATEGORY_LABELS).map(k => (
+              <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>
+            ))}
+          </select>
+          <button type="submit" className="btn btn-primary">Tìm kiếm</button>
+        </form>
       </div>
 
       {courses.length === 0 ? (
@@ -144,15 +183,19 @@ const InstructorDashboard = () => {
                 <Link to={`/courses/${course.id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Xem">
                   <Eye size={14} /> Xem
                 </Link>
-                <Link to={`/instructor/course/${course.id}/students`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Học sinh">
-                  <Users size={14} /> Học sinh
-                </Link>
-                <Link to={`/instructor/course/${course.id}/edit`} className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Edit size={14} /> Sửa
-                </Link>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)', padding: '0.4rem 0.6rem' }} onClick={() => handleDelete(course.id)} title="Xóa">
-                  <Trash2 size={14} />
-                </button>
+                {(course.lecturer_id === user?.id || user?.role === 'admin') && (
+                  <>
+                    <Link to={`/instructor/course/${course.id}/students`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Học sinh">
+                      <Users size={14} /> Học sinh
+                    </Link>
+                    <Link to={`/instructor/course/${course.id}/edit`} className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Edit size={14} /> Sửa
+                    </Link>
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)', padding: '0.4rem 0.6rem' }} onClick={() => handleDelete(course.id)} title="Xóa">
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))}

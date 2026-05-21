@@ -235,14 +235,16 @@ const CourseDetail = () => {
               </div>
 
               {/* Action Buttons */}
-              {isOwner ? (
+              {isOwner || user?.role === 'admin' || user?.role === 'lecturer' ? (
                 <>
                   <Link to={`/courses/${id}/learn`} className="btn btn-primary btn-lg btn-block" style={{ marginBottom: '0.75rem', borderRadius: '12px' }}>
                     <BookOpen size={18} /> Xem bài học
                   </Link>
-                  <Link to={`/instructor/course/${id}/edit`} className="btn btn-secondary btn-lg btn-block" style={{ marginBottom: '0.5rem', borderRadius: '12px' }}>
-                    Chỉnh sửa khóa học
-                  </Link>
+                  {(isOwner || user?.role === 'admin') && (
+                    <Link to={`/instructor/course/${id}/edit`} className="btn btn-secondary btn-lg btn-block" style={{ marginBottom: '0.5rem', borderRadius: '12px' }}>
+                      Chỉnh sửa khóa học
+                    </Link>
+                  )}
                 </>
               ) : isEnrolled ? (
                 <Link to={`/courses/${id}/learn`} className="btn btn-primary btn-lg btn-block" style={{ borderRadius: '12px' }}>

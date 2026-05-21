@@ -17,9 +17,9 @@ exports.getCourses = async (req, res) => {
       JOIN users u ON c.lecturer_id = u.id
       LEFT JOIN enrollments e ON e.course_id = c.id
       LEFT JOIN lessons l ON l.course_id = c.id
-      WHERE (c.title ILIKE ? OR c.description ILIKE ?)
+      WHERE (c.title ILIKE ? OR c.description ILIKE ? OR u.name ILIKE ?)
     `;
-    const params = [search, search];
+    const params = [search, search, search];
 
     if (category && category !== 'All') {
       query += ' AND c.category = ?';
