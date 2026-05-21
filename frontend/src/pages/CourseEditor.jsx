@@ -5,8 +5,8 @@ import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { FileEdit, List, DollarSign, CheckCircle, ArrowLeft, Upload, Plus, Trash2, X, Video, File, FileText, ClipboardList, Calendar, Copy, ChevronLeft, ChevronRight, Eye, Save, CheckCircle2, AlertCircle, GripVertical, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
 
-const CATEGORIES = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'Music', 'Arts', 'PE'];
-const CATEGORY_LABELS = { All: 'Tất cả', Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên và Xã hội', Science: 'Khoa học', Music: 'Âm nhạc', Arts: 'Mỹ thuật', PE: 'Thể dục' };
+const CATEGORIES = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'HistoryGeography', 'Music', 'Arts' ];
+const CATEGORY_LABELS = { All: 'Tất cả', Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên và Xã hội', Science: 'Khoa học', HistoryGeography: 'Lịch sử và địa lý', Music: 'Âm nhạc', Arts: 'Mỹ thuật'};
 const LEVELS = ['Semester1', 'Semester2'];
 const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 

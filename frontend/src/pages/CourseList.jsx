@@ -5,8 +5,8 @@ import { AuthContext } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, BookOpen, Users, GraduationCap, Star, Filter } from 'lucide-react';
 
-const CATEGORIES = ['Tất cả', 'Toán', 'Tiếng Việt', 'Tiếng Anh', 'Đạo đức', 'Tự nhiên và Xã hội', 'Khoa học', 'Âm nhạc', 'Mỹ thuật', 'Thể dục'];
-const CATEGORIES_VAL = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'Music', 'Arts', 'PE'];
+const CATEGORIES = ['Tất cả', 'Toán', 'Tiếng Việt', 'Tiếng Anh', 'Đạo đức', 'Tự nhiên và Xã hội', 'Khoa học', 'Lịch sử và địa lý', 'Âm nhạc', 'Mỹ thuật'];
+const CATEGORIES_VAL = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'HistoryGeography', 'Music', 'Arts'];
 const LEVELS = ['Tất cả', 'Học kỳ 1', 'Học kỳ 2'];
 const LEVELS_VAL = ['All', 'Semester1', 'Semester2'];
 const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
