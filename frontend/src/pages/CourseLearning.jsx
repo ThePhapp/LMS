@@ -4,7 +4,7 @@ import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import {
-  FileText, FileVideo, Circle, ArrowLeft, Download, Link2, BookOpen, ClipboardList, Check, FileArchive
+  FileText, FileVideo, ArrowLeft, Download, Link2, BookOpen, ClipboardList, Check, FileArchive, ChevronRight, ChevronLeft, Sparkles, PanelRightClose, PanelRight
 } from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
 import PackageViewer from '../components/PackageViewer';
@@ -81,7 +81,6 @@ const CourseLearning = () => {
 
   const fetchCourseAndProgress = async () => {
     try {
-      // Must be enrolled or owner
       const res = await api.get(`/courses/${id}`);
       setCourse(res.data);
       if (res.data.lessons?.length > 0) setActiveLesson(res.data.lessons[0]);
@@ -93,7 +92,7 @@ const CourseLearning = () => {
         setProgress(map);
       }
     } catch {
-      navigate(`/courses/${id}`); // fallback if error / no access
+      navigate(`/courses/${id}`);
     } finally {
       setLoading(false);
     }
@@ -168,13 +167,13 @@ const CourseLearning = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
-      {/* Top Navbar Context */}
-      <div style={{ background: '#1e293b', color: '#fff', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button className="btn btn-ghost" style={{ color: '#94a3b8', padding: '0.25rem' }} onClick={() => navigate(`/courses/${id}`)}>
+      {/* Top Bar */}
+      <div className="learn-topbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button className="learn-topbar-back" onClick={() => navigate(`/courses/${id}`)}>
             <ArrowLeft size={18} />
           </button>
-          <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{course.title}</div>
+          <div className="learn-topbar-title">{course.title}</div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="learning-header-actions">
@@ -183,8 +182,16 @@ const CourseLearning = () => {
               <FunProgressBar pct={progressPct} />
             </div>
           )}
-          <button className="btn btn-secondary btn-sm" onClick={() => setShowSidebar(!showSidebar)} style={{ whiteSpace: 'nowrap' }}>
-            {showSidebar ? 'Ẩn mục lục' : 'Hiện mục lục'}
+          <button 
+            className="learn-topbar-back" 
+            onClick={() => setShowSidebar(!showSidebar)} 
+            title={showSidebar ? 'Ẩn mục lục' : 'Hiện mục lục'}
+            style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {showSidebar ? <PanelRightClose size={16} /> : <PanelRight size={16} />}
+            <span style={{ display: window.innerWidth > 768 ? 'inline' : 'none' }}>
+              {showSidebar ? 'Ẩn' : 'Mục lục'}
+            </span>
           </button>
         </div>
       </div>
@@ -192,43 +199,42 @@ const CourseLearning = () => {
       {/* Main Split Layout */}
       <div className="learning-layout">
         
-        {/* Left: Content Player (70%) */}
+        {/* Left: Content Player */}
         <div className="learning-content">
           {activeLesson ? (
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
               
               {/* Content Header */}
-              <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className="learn-content-header">
                 <div>
-                  <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{activeLesson.title}</h2>
+                  <h2 className="learn-content-title">{activeLesson.title}</h2>
                 </div>
                 {user?.role === 'student' && activeLesson.item_type !== 'assignment' && (
-                    <button
-                      className={`btn ${progress[activeLesson.id] ? 'btn-success' : 'btn-secondary'}`}
-                      style={progress[activeLesson.id] ? {} : { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#fff', border: 'none' }}
-                      onClick={() => toggleProgress(activeLesson.id, progress[activeLesson.id])}>
-                      {progress[activeLesson.id]
-                          ? <>✅ Đã hoàn thành!</>
-                          : <>🎯 Đánh dấu hoàn thành</>}
-                    </button>
+                  <button
+                    className={`learn-mark-btn ${progress[activeLesson.id] ? 'completed' : 'pending'}`}
+                    onClick={() => toggleProgress(activeLesson.id, progress[activeLesson.id])}>
+                    {progress[activeLesson.id]
+                      ? <><Check size={16} /> Đã hoàn thành</>
+                      : <><Sparkles size={16} /> Hoàn thành bài học</>}
+                  </button>
                 )}
               </div>
 
               {/* Viewers */}
               {activeLesson.item_type === 'assignment' ? (
-                <div className="card" style={{ padding: '1.5rem' }}>
+                <div className="card" style={{ padding: '1.5rem', borderRadius: '16px' }}>
                   <AssignmentViewer assignment={activeLesson} onSubmissionSuccess={() => fetchFullAssignment(activeLesson.id)} />
                 </div>
               ) : (
                 <>
                   {ytId && (
-                    <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)' }}>
+                    <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)', borderRadius: '16px' }}>
                       <iframe src={`https://www.youtube.com/embed/${ytId}`} allowFullScreen style={{ border: 'none' }} />
                     </div>
                   )}
 
                   {!ytId && activeLesson.file_type === 'video' && activeLesson.file_url && (
-                    <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)' }}>
+                    <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)', borderRadius: '16px' }}>
                       <video controls style={{ width: '100%', height: '100%' }}>
                         <source src={assetUrl(activeLesson.file_url)} />
                       </video>
@@ -236,7 +242,7 @@ const CourseLearning = () => {
                   )}
 
                   {activeLesson.video_url && !ytId && (
-                    <div className="doc-preview" style={{ marginBottom: '1.5rem' }}>
+                    <div className="doc-preview" style={{ marginBottom: '1.5rem', borderRadius: '12px' }}>
                       <div className="doc-icon" style={{ background: '#CFFAFE' }}>🎬</div>
                       <div>
                         <div style={{ fontWeight: 600, marginBottom: 4 }}>Liên kết Video ngoài</div>
@@ -264,7 +270,7 @@ const CourseLearning = () => {
                             <div style={{ fontWeight: 600, fontSize: '1rem' }}>
                               📄 {activeLesson.file_name || 'Tài liệu PDF'}
                             </div>
-                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm">
+                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
                               <Download size={13} /> Tải xuống
                             </a>
                           </div>
@@ -272,7 +278,7 @@ const CourseLearning = () => {
                             width: '100%', 
                             height: '600px', 
                             border: '1px solid var(--border)', 
-                            borderRadius: 'var(--radius)',
+                            borderRadius: '16px',
                             overflow: 'hidden',
                             boxShadow: 'var(--shadow-lg)'
                           }}>
@@ -297,12 +303,12 @@ const CourseLearning = () => {
                               <div style={{ fontWeight: 600, fontSize: '1rem' }}>
                                 {icon} {activeLesson.file_name || label}
                               </div>
-                              <a href={fullUrl} download className="btn btn-secondary btn-sm">
+                              <a href={fullUrl} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
                                 <Download size={13} /> Tải xuống
                               </a>
                             </div>
                             {isLocal ? (
-                              <div className="doc-preview" style={{ background: '#FEF3C7', border: '1px solid #F59E0B', padding: '1.25rem' }}>
+                              <div className="doc-preview" style={{ background: '#FEF3C7', border: '1px solid #F59E0B', padding: '1.25rem', borderRadius: '12px' }}>
                                 <div className="doc-icon" style={{ background: '#FDE68A', fontSize: '1.5rem' }}>{icon}</div>
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontWeight: 600, marginBottom: 4 }}>Xem trước không khả dụng trên localhost</div>
@@ -316,7 +322,7 @@ const CourseLearning = () => {
                                 width: '100%',
                                 height: '700px',
                                 border: '1px solid var(--border)',
-                                borderRadius: 'var(--radius)',
+                                borderRadius: '16px',
                                 overflow: 'hidden',
                                 boxShadow: 'var(--shadow-lg)',
                                 background: '#f1f5f9'
@@ -332,11 +338,11 @@ const CourseLearning = () => {
                           </div>
                         );
                       })() : (
-                        <div className="doc-preview">
+                        <div className="doc-preview" style={{ borderRadius: '12px' }}>
                           <div className="doc-icon" style={{ background: '#EDE9FE' }}>📝</div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, marginBottom: 4 }}>{activeLesson.file_name || 'Tài liệu'}</div>
-                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm">
+                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
                               <Download size={13} /> Tải xuống
                             </a>
                           </div>
@@ -346,49 +352,51 @@ const CourseLearning = () => {
                   )}
 
                   {/* Context Tabs */}
-                  <div className="tabs" style={{ marginTop: '2rem', borderBottom: '1px solid var(--border)' }}>
+                  <div className="tabs" style={{ marginTop: '2rem', borderBottom: '2px solid var(--border)' }}>
                     <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Tổng quan</button>
                     {user?.role === 'student' && <button className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Ghi chú</button>}
-                    <button className={`tab ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Hỏi đáp (Q&A)</button>
-                    <button className={`tab ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Học Cùng AI</button>
+                    <button className={`tab ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Hỏi đáp</button>
+                    <button className={`tab ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Sparkles size={14} /> Học cùng AI
+                    </button>
                   </div>
 
                   <div className="tab-content" style={{ marginTop: '1.5rem', minHeight: '300px' }}>
                     {activeTab === 'overview' && (
-                      <div style={{ fontSize: '1rem', lineHeight: 1.8, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
-                        {activeLesson.content || <div style={{ color: 'var(--text-muted)' }}>Chưa có mô tả cho bài học này.</div>}
+                      <div style={{ fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                        {activeLesson.content || <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Chưa có mô tả cho bài học này.</div>}
                       </div>
                     )}
                     {activeTab === 'notes' && user?.role === 'student' && (
-                      <div className="card" style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Ghi chú riêng tư cho bài học này.</p>
-                          <button className="btn btn-primary btn-sm" onClick={saveNotes}>Lưu ghi chú</button>
+                      <div className="card" style={{ padding: '1.5rem', borderRadius: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+                          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>Ghi chú riêng tư cho bài học này.</p>
+                          <button className="btn btn-primary btn-sm" onClick={saveNotes} style={{ borderRadius: '9999px' }}>Lưu ghi chú</button>
                         </div>
-                        <textarea className="form-textarea" rows="8" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Nhập ghi chú của bạn..." />
+                        <textarea className="form-textarea" rows="8" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Nhập ghi chú của bạn..." style={{ borderRadius: '12px' }} />
                       </div>
                     )}
                     {activeTab === 'ai' && (
                       <LessonAiChat lesson={activeLesson} course={course} />
                     )}
                     {activeTab === 'comments' && (
-                      <div className="card" style={{ padding: '1.5rem' }}>
+                      <div className="card" style={{ padding: '1.5rem', borderRadius: '16px' }}>
                         {/* Write comment */}
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem' }}>
-                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
                             {user?.name?.[0]?.toUpperCase() || 'U'}
                           </div>
                           <form onSubmit={submitComment} style={{ flex: 1, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <input
                               type="text"
                               className="form-input"
-                              style={{ flex: 1, borderRadius: '20px', padding: '0.5rem 1rem' }}
+                              style={{ flex: 1, borderRadius: '9999px', padding: '0.55rem 1.25rem' }}
                               value={newComment}
                               onChange={e => setNewComment(e.target.value)}
-                              placeholder="Viết bình luận..."
+                              placeholder="Viết bình luận hoặc đặt câu hỏi..."
                             />
                             {newComment.trim() && (
-                              <button type="submit" className="btn btn-primary btn-sm" style={{ borderRadius: '20px', whiteSpace: 'nowrap' }}>Gửi</button>
+                              <button type="submit" className="btn btn-primary btn-sm" style={{ borderRadius: '9999px', whiteSpace: 'nowrap' }}>Gửi</button>
                             )}
                           </form>
                         </div>
@@ -400,13 +408,13 @@ const CourseLearning = () => {
                             return (
                               <div key={c.id}>
                                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
-                                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
+                                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
                                     {c.user_name[0].toUpperCase()}
                                   </div>
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ background: 'var(--bg)', borderRadius: '12px', padding: '0.6rem 0.875rem', display: 'inline-block', maxWidth: '100%' }}>
+                                    <div style={{ background: 'var(--surface-2)', borderRadius: '14px', padding: '0.7rem 1rem', display: 'inline-block', maxWidth: '100%', border: '1px solid var(--border)' }}>
                                       <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 2 }}>{c.user_name}</div>
-                                      <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>{c.content}</div>
+                                      <div style={{ fontSize: '0.92rem', color: 'var(--text)', lineHeight: 1.5 }}>{c.content}</div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', paddingLeft: '0.5rem', alignItems: 'center' }}>
                                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{timeAgo(c.created_at)}</span>
@@ -417,16 +425,16 @@ const CourseLearning = () => {
                                     </div>
                                     {/* Replies */}
                                     {replies.length > 0 && (
-                                      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border)' }}>
                                         {replies.map(r => (
                                           <div key={r.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
+                                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), #0ea5e9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
                                               {r.user_name[0].toUpperCase()}
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                              <div style={{ background: 'var(--bg)', borderRadius: '12px', padding: '0.5rem 0.875rem', display: 'inline-block', maxWidth: '100%' }}>
+                                              <div style={{ background: 'var(--surface-2)', borderRadius: '12px', padding: '0.5rem 0.875rem', display: 'inline-block', maxWidth: '100%', border: '1px solid var(--border)' }}>
                                                 <div style={{ fontWeight: 700, fontSize: '0.83rem', marginBottom: 2 }}>{r.user_name}</div>
-                                                <div style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{r.content}</div>
+                                                <div style={{ fontSize: '0.88rem', color: 'var(--text)', lineHeight: 1.5 }}>{r.content}</div>
                                               </div>
                                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', paddingLeft: '0.5rem' }}>{timeAgo(r.created_at)}</div>
                                             </div>
@@ -437,21 +445,21 @@ const CourseLearning = () => {
                                     {/* Reply input */}
                                     {isReplying && (
                                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
-                                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
+                                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
                                           {user?.name?.[0]?.toUpperCase() || 'U'}
                                         </div>
                                         <form onSubmit={(e) => submitReply(e, c.id)} style={{ flex: 1, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                           <input
                                             type="text"
                                             className="form-input"
-                                            style={{ flex: 1, borderRadius: '20px', padding: '0.4rem 0.875rem', fontSize: '0.9rem' }}
+                                            style={{ flex: 1, borderRadius: '9999px', padding: '0.4rem 1rem', fontSize: '0.88rem' }}
                                             value={replyContent}
                                             onChange={e => setReplyContent(e.target.value)}
                                             placeholder={`Phản hồi ${c.user_name}...`}
                                             autoFocus
                                           />
                                           {replyContent.trim() && (
-                                            <button type="submit" className="btn btn-primary btn-sm" style={{ borderRadius: '20px', whiteSpace: 'nowrap' }}>Gửi</button>
+                                            <button type="submit" className="btn btn-primary btn-sm" style={{ borderRadius: '9999px', whiteSpace: 'nowrap' }}>Gửi</button>
                                           )}
                                         </form>
                                       </div>
@@ -462,23 +470,38 @@ const CourseLearning = () => {
                             );
                           })}
                           {comments.filter(c => !c.parent_id).length === 0 && (
-                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>Chưa có thảo luận nào. Hãy đặt câu hỏi!</div>
+                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
+                              <BookOpen size={28} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                              <p>Chưa có thảo luận nào. Hãy đặt câu hỏi!</p>
+                            </div>
                           )}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Nav Buttons below video */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+                  {/* Nav Buttons */}
+                  <div className="learn-nav">
                     {(() => {
                       const idx = lessons.findIndex(l => l.id === activeLesson.id);
                       const prev = lessons[idx - 1];
                       const next = lessons[idx + 1];
                       return (
                         <>
-                          {prev ? <button className="btn btn-secondary" onClick={() => setActiveLesson(prev)}>← {prev.title}</button> : <div />}
-                          {next ? <button className="btn btn-primary" onClick={() => setActiveLesson(next)}>Hiểu rồi, Tiếp tục →</button> : <div style={{ fontSize: '1rem', color: 'var(--success)', fontWeight: 600 }}>🎉 Bạn đã học xong!</div>}
+                          {prev 
+                            ? <button className="learn-nav-btn prev" onClick={() => setActiveLesson(prev)}>
+                                <ChevronLeft size={16} /> {prev.title}
+                              </button> 
+                            : <div />
+                          }
+                          {next 
+                            ? <button className="learn-nav-btn next" onClick={() => setActiveLesson(next)}>
+                                Tiếp tục <ChevronRight size={16} />
+                              </button> 
+                            : <div style={{ fontSize: '1rem', color: 'var(--success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Check size={18} /> Bạn đã hoàn thành!
+                              </div>
+                          }
                         </>
                       );
                     })()}
@@ -488,84 +511,152 @@ const CourseLearning = () => {
             </div>
           ) : (
             <div className="empty-state">
-              <div className="empty-state-icon">👈</div>
+              <div className="empty-state-icon">📖</div>
               <h3>Chọn bài học</h3>
-              <p>Chọn bài học từ danh sách bên phải.</p>
+              <p>Chọn bài học từ mục lục bên phải để bắt đầu.</p>
             </div>
           )}
         </div>
 
-        {/* Right: Sticky Syllabus (30%) */}
+        {/* Right: Sidebar Syllabus */}
         {showSidebar && (
-          <div className="learning-sidebar">
-          <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', fontWeight: 800, fontSize: '1.1rem' }}>
-            Nội dung khoá học
-          </div>
-          <div className="lesson-list" style={{ padding: '1rem' }}>
-            {course.chapters?.map((chapter) => (
-              <div key={chapter.id} style={{ marginBottom: '1.5rem' }}>
-                <div style={{ fontWeight: 800, padding: '0 0.5rem', color: 'var(--text)', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
-                  {chapter.title}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div className="learning-sidebar" style={{ width: '360px' }}>
+            <div style={{ 
+              padding: '1.15rem 1.5rem', 
+              borderBottom: '1px solid var(--border)', 
+              fontWeight: 800, 
+              fontSize: '1rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              background: 'var(--surface)',
+              flexShrink: 0
+            }}>
+              <BookOpen size={18} color="var(--primary)" />
+              Nội dung khoá học
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {course.chapters?.map((chapter) => (
+                <div key={chapter.id}>
+                  {/* Chapter title */}
+                  <div style={{ 
+                    fontWeight: 700, 
+                    padding: '0.75rem 1.5rem 0.5rem', 
+                    fontSize: '0.78rem', 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '0.5px', 
+                    color: 'var(--text-muted)', 
+                    background: 'var(--surface-2)', 
+                    borderBottom: '1px solid var(--border)',
+                    borderTop: '1px solid var(--border)'
+                  }}>
+                    {chapter.title}
+                  </div>
+
+                  {/* Lesson items */}
                   {chapter.lessons?.map((lesson, idx) => {
                     const isDone = !!progress[lesson.id];
                     const isActive = activeLesson?.id === lesson.id;
                     return (
                       <div key={lesson.id}
-                        className={`lesson-item ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveLesson(lesson)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
-                          borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'var(--transition)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.85rem',
+                          padding: '0.9rem 1.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          borderBottom: '1px solid var(--border)',
+                          borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
                           background: isActive ? 'var(--primary-light)' : 'transparent',
-                          border: isActive ? '1px solid var(--primary)' : '1px solid transparent',
-                          opacity: isDone && !isActive ? 0.7 : 1
-                        }}
-                        onClick={() => setActiveLesson(lesson)}>
+                          opacity: isDone && !isActive ? 0.65 : 1
+                        }}>
                         
-                        <div style={{ color: isDone ? 'var(--success)' : 'var(--text-light)', flexShrink: 0, marginTop: '2px' }}>
-                          {isDone ? <Check size={18} /> : <Circle size={18} />}
+                        {/* Check circle */}
+                        <div style={{
+                          width: '24px', height: '24px',
+                          borderRadius: '50%',
+                          border: isDone ? 'none' : isActive ? '2px solid var(--primary)' : '2px solid var(--border-2)',
+                          background: isDone ? 'var(--success)' : isActive ? 'var(--primary-light)' : 'var(--surface)',
+                          color: isDone ? '#fff' : isActive ? 'var(--primary)' : 'var(--text-light)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, fontSize: '0.7rem', fontWeight: 700
+                        }}>
+                          {isDone ? <Check size={12} /> : (idx + 1)}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                          <div style={{ fontSize: '0.9rem', fontWeight: isActive ? 700 : 500, color: isActive ? 'var(--primary-dark)' : 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                            {idx + 1}. {lesson.title}
+
+                        {/* Lesson info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ 
+                            fontSize: '0.88rem', 
+                            fontWeight: isActive ? 700 : 500, 
+                            color: isActive ? 'var(--primary-dark)' : 'var(--text)', 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis' 
+                          }}>
+                            {lesson.title}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-light)', marginTop: '3px' }}>
                             <LessonTypeIcon lesson={lesson} /> {lesson.duration || '00:00'}
                           </div>
                         </div>
                       </div>
                     );
                   })}
+
+                  {/* Assignment items */}
                   {chapter.assignments?.map((assignment) => {
                     const isActive = activeLesson?.id === assignment.id && activeLesson?.item_type === 'assignment';
                     return (
                       <div key={`ass_${assignment.id}`}
-                        className={`lesson-item ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveLesson({...assignment, item_type: 'assignment'})}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
-                          borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'var(--transition)',
-                          background: isActive ? 'var(--warning-light)' : 'transparent',
-                          border: isActive ? '1px solid var(--warning)' : '1px solid transparent'
-                        }}
-                        onClick={() => setActiveLesson({...assignment, item_type: 'assignment'})}>
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.85rem',
+                          padding: '0.9rem 1.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          borderBottom: '1px solid var(--border)',
+                          borderLeft: isActive ? '3px solid var(--warning)' : '3px solid transparent',
+                          background: isActive ? '#FEF9C3' : 'transparent',
+                        }}>
                         
-                        <div style={{ color: 'var(--warning)', flexShrink: 0, marginTop: '2px' }}>
-                          <ClipboardList size={18} />
+                        <div style={{
+                          width: '24px', height: '24px',
+                          borderRadius: '50%',
+                          border: `2px solid var(--warning)`,
+                          background: isActive ? '#FEF3C7' : 'var(--surface)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <ClipboardList size={12} color="var(--warning)" />
                         </div>
+
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.9rem', fontWeight: isActive ? 700 : 500, color: 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          <div style={{ 
+                            fontSize: '0.88rem', 
+                            fontWeight: isActive ? 700 : 500, 
+                            color: 'var(--text)', 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis' 
+                          }}>
                             {assignment.title || 'Bài tập / Quiz'}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-light)', marginTop: '3px' }}>
+                            <ClipboardList size={12} color="var(--warning)" /> Bài tập
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
         )}
       </div>
       <Confetti active={showConfetti} />
