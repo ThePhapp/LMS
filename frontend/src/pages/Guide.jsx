@@ -33,7 +33,7 @@ const sections = [
     steps: [
       { 
         title: 'Duyệt danh sách khóa học', 
-        content: 'Vào mục "Khóa học" trên thanh điều hướng. Bạn sẽ thấy danh sách các khóa học được hiển thị dạng thẻ (card). Sử dụng thanh tìm kiếm hoặc bộ lọc ở Sidebar để lọc theo Chủ đề, Cấp độ (Beginner / Intermediate / Advanced) hoặc Giá (Miễn phí / Có phí).'
+        content: 'Vào mục "Khóa học" trên thanh điều hướng. Bạn sẽ thấy danh sách các khóa học được hiển thị dạng thẻ (card). Sử dụng thanh tìm kiếm hoặc bộ lọc ở Sidebar để lọc theo Chủ đề, Cấp độ (Beginner / Intermediate / Advanced) hoặc Giá (Mở đăng ký / Có phí).'
       },
       { 
         title: 'Xem chi tiết khóa học', 

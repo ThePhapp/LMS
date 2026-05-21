@@ -134,7 +134,7 @@ const InstructorDashboard = () => {
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={13} /> {course.student_count || 0} học sinh</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#eab308' }}><Star size={13} fill="currentColor" /><span style={{ color: 'var(--text-muted)' }}>{parseFloat(course.rating || 0).toFixed(1)}</span></span>
                   <span style={{ marginLeft: 'auto', fontWeight: 600, color: course.price > 0 ? 'var(--primary)' : '#16a34a' }}>
-                    {course.price > 0 ? `$${course.price}` : 'Miễn phí'}
+                    {course.price > 0 ? `$${course.price}` : 'Mở đăng ký'}
                   </span>
                 </div>
               </div>

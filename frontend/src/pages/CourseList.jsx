@@ -105,7 +105,7 @@ const CourseList = () => {
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
                   <input type="radio" name="price" checked={priceFilter === 'free'} onChange={() => setPriceFilter('free')} />
-                  Miễn phí
+                  Mở đăng ký
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
                   <input type="radio" name="price" checked={priceFilter === 'paid'} onChange={() => setPriceFilter('paid')} />
@@ -128,44 +128,77 @@ const CourseList = () => {
               <p>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
             </div>
           ) : (
-            <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+            <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
               {courses.map(course => (
-                <div key={course.id} className="course-card">
-                  <div className="course-card-thumb" style={{ height: '140px' }}>
+                <div key={course.id} className="course-card" onClick={() => handleEnrollOrView(course.id)}>
+                  <div className="course-card-thumb" style={{ height: '200px' }}>
                     {course.thumbnail_url
-                      ? <img src={assetUrl(course.thumbnail_url)} alt={course.title} />
-                      : <GraduationCap size={40} />
+                      ? <img 
+                          src={assetUrl(course.thumbnail_url)} 
+                          alt={course.title}
+                          loading="lazy"
+                          style={{ objectPosition: 'center center' }}
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                      : <GraduationCap size={48} strokeWidth={1.5} />
                     }
-                    <span className="badge badge-primary" style={{ position: 'absolute', top: 10, left: 10 }}>{course.category}</span>
-                    <span className="badge badge-purple" style={{ position: 'absolute', top: 10, right: 10 }}>{LEVEL_LABELS[course.level] || course.level || 'Cơ bản'}</span>
+                    <span className="badge badge-primary" style={{ position: 'absolute', top: 12, left: 12 }}>{course.category}</span>
+                    <span className="badge badge-purple" style={{ position: 'absolute', top: 12, right: 12 }}>{LEVEL_LABELS[course.level] || course.level || 'Cơ bản'}</span>
                   </div>
-                  <div className="course-card-body" style={{ padding: '1rem', display: 'flex', flexDirection: 'column' }}>
-                    <div className="course-card-title" style={{ fontSize: '1.05rem', minHeight: '44px', marginBottom: '4px' }}>
+                  <div className="course-card-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+                    <div className="course-card-title" style={{ fontSize: '1.05rem', minHeight: '48px', marginBottom: '6px' }}>
                       {course.title}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <GraduationCap size={13} /> {course.lecturer_name}
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ 
+                        width: '24px', height: '24px', borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: '0.65rem', fontWeight: 700, flexShrink: 0
+                      }}>
+                        {(course.lecturer_name || 'T').charAt(0).toUpperCase()}
+                      </div>
+                      <span style={{ fontWeight: 500 }}>{course.lecturer_name}</span>
                     </div>
                     
                     {/* Rating & Lessons */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#eab308' }}>
-                        <Star size={14} fill="currentColor" />
-                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>{course.rating ? parseFloat(course.rating).toFixed(1) : '4.0'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            size={14} 
+                            fill={i < Math.round(parseFloat(course.rating || 4)) ? '#eab308' : 'none'} 
+                            color={i < Math.round(parseFloat(course.rating || 4)) ? '#eab308' : '#d4d4d8'} 
+                            strokeWidth={1.5}
+                          />
+                        ))}
+                        <span style={{ fontWeight: 600, color: 'var(--text)', marginLeft: '4px' }}>{course.rating ? parseFloat(course.rating).toFixed(1) : '4.0'}</span>
                         <span style={{ color: 'var(--text-light)' }}>({course.rating_count || 0})</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)' }}>
-                        <BookOpen size={13} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        <BookOpen size={14} />
                         {course.lesson_count || 0} bài
                       </div>
                     </div>
                     
                     {/* Price & Action */}
                     <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)' }}>
-                        {course.price > 0 ? `$${parseFloat(course.price).toFixed(2)}` : 'Miễn phí'}
+                      <div style={{ fontWeight: 800, fontSize: '1.15rem' }}>
+                        {course.price > 0 
+                          ? <span style={{ color: 'var(--primary)' }}>{parseFloat(course.price).toLocaleString()}đ</span>
+                          : <span style={{ 
+                              background: 'linear-gradient(135deg, #10B981, #06B6D4)', 
+                              WebkitBackgroundClip: 'text', 
+                              WebkitTextFillColor: 'transparent'
+                            }}>Mở đăng ký</span>
+                        }
                       </div>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleEnrollOrView(course.id)}>
+                      <button 
+                        className="btn btn-primary btn-sm" 
+                        onClick={(e) => { e.stopPropagation(); handleEnrollOrView(course.id); }}
+                        style={{ borderRadius: '9999px', padding: '0.4rem 1.2rem' }}
+                      >
                         Đăng ký
                       </button>
                     </div>

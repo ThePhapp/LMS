@@ -160,14 +160,14 @@ const CourseDetail = () => {
                 <iframe src={`https://www.youtube.com/embed/${ytId}`} allowFullScreen style={{ width: '100%', height: '100%', border: 'none' }} />
               ) : (
                 course.thumbnail_url 
-                  ? <img src={assetUrl(course.thumbnail_url)} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} /> 
+                  ? <img src={assetUrl(course.thumbnail_url)} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: '-webkit-optimize-contrast' }} alt={course.title} /> 
                   : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.5)' }}><PlayCircle size={48} /></div>
               )}
             </div>
 
             <div style={{ padding: '1.5rem' }}>
               <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '1.5rem' }}>
-                {course.price > 0 ? `$${parseFloat(course.price).toFixed(2)}` : 'Miễn phí'}
+                {course.price > 0 ? `$${parseFloat(course.price).toFixed(2)}` : 'Mở đăng ký'}
               </div>
 
               {isOwner ? (

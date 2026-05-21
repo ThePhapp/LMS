@@ -25,7 +25,7 @@ const translations = {
     back: 'Quay lại',
     enroll: 'Đăng ký',
     continue_learning: 'Tiếp tục học',
-    free: 'Miễn phí',
+    free: 'Mở đăng ký',
     today: 'Hôm nay',
 
     // Profile Page
@@ -103,7 +103,7 @@ const translations = {
     editor_course_desc: 'Mô tả',
     editor_category: 'Chủ đề',
     editor_level: 'Cấp độ',
-    editor_price: 'Giá (0 = Miễn phí)',
+    editor_price: 'Giá (0 = Mở đăng ký)',
     editor_thumbnail: 'Ảnh bìa',
     editor_chapters: 'Danh sách chương',
     editor_add_chapter: 'Thêm chương',
