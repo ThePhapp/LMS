@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useContext, useCallback } from 'react';
 import { Send, Loader, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
+import { MUSHROOM_KNOWLEDGE } from '../data/mushroomKnowledge';
 
 function playSound(type) {
   try {
@@ -53,6 +54,9 @@ function buildSystemPrompt(lesson, course) {
 Nội dung bài học:
 ${lessonContent || '(Chưa có mô tả chi tiết)'}
 
+Dữ liệu tham khảo (Ưu tiên trả lời dựa theo dữ liệu này khi được hỏi):
+${MUSHROOM_KNOWLEDGE}
+
 Nhiệm vụ của bạn:
 
 Giải thích kiến thức khoa học lớp 4 một cách dễ hiểu, ngắn gọn, chính xác và sinh động.
@@ -67,6 +71,7 @@ Hỗ trợ học sinh ôn tập, củng cố kiến thức và tạo hứng thú
 Yêu cầu khi trả lời:
 
 Sử dụng tiếng Việt đơn giản, phù hợp với học sinh lớp 4.
+Chỉ trả lời theo kiến thức Khoa học lớp 4.
 Trả lời ngắn gọn, đúng trọng tâm, không lan man.
 Ưu tiên cách giải thích giống sách giáo khoa tiểu học.
 Dùng ví dụ gần gũi như gia đình, trường học, cây cối, thức ăn, thiên nhiên,...
