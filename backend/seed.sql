@@ -23,13 +23,13 @@ ALTER SEQUENCE events_id_seq RESTART WITH 1;
 
 -- Insert demo users (passwords are hashed version of "123456")
 INSERT INTO users (name, email, password, role) VALUES
-('Cô Nguyễn Mai', 'mai.nguyen@school.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'lecturer'),
-('Thầy Trần Minh', 'minh.tran@school.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'lecturer'),
-('Cô Lê Hương', 'huong.le@school.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'lecturer'),
-('Bé An', 'an@student.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student'),
-('Bé Bình', 'binh@student.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student'),
-('Bé Chi', 'chi@student.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student'),
-('Admin', 'admin@school.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin');
+('Cô Nguyễn Mai', 'mai.nguyen@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'lecturer'),
+('Thầy Trần Minh', 'minh.tran@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'lecturer'),
+('Cô Lê Hương', 'huong.le@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'lecturer'),
+('Bé An', 'an@student.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'student'),
+('Bé Bình', 'binh@student.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'student'),
+('Bé Chi', 'chi@student.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'student'),
+('Admin', 'admin@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'admin');
 
 -- Insert courses
 INSERT INTO courses (title, description, category, lecturer_id, price, level) VALUES

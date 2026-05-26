@@ -84,7 +84,7 @@ const Landing = () => {
           <div className="footer-col">
             <h4>LIÊN HỆ</h4>
             <p><strong>Lớp Học Đổi Mới</strong></p>
-            <p>Địa chỉ: Hanoi, Vietnam</p>
+            <p>Địa chỉ: Trường Vinh, Nghệ An</p>
             <p>Điện thoại: 0123.456.789</p>
             <p>Email: contact@lop-hoc-doi-moi.lms</p>
           </div>

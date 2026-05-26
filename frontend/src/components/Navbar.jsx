@@ -2,7 +2,7 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { LangContext } from '../contexts/LangContext';
-import { GraduationCap, BookOpen, LogOut, MessageSquare, User, ChevronDown, Globe, Calendar, Menu, X, Bell } from 'lucide-react';
+import { GraduationCap, BookOpen, LogOut, MessageSquare, User, ChevronDown, Globe, Calendar, Menu, X, Bell, Settings } from 'lucide-react';
 import api, { assetUrl } from '../services/api';
 
 const Navbar = () => {
@@ -389,6 +389,28 @@ const Navbar = () => {
                     <span style={{ fontSize: '0.875rem' }}>{t('nav_courses')}</span>
                   </Link>
                   
+                  {user.role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setShowUserMenu(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
+                        color: 'var(--text)',
+                        textDecoration: 'none',
+                        transition: 'background 0.2s',
+                        borderBottom: '1px solid var(--border)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Settings size={16} />
+                      <span style={{ fontSize: '0.875rem' }}>Admin Dashboard</span>
+                    </Link>
+                  )}
+                  
                   <Link
                     to="/profile"
                     onClick={() => setShowUserMenu(false)}
@@ -537,6 +559,11 @@ const Navbar = () => {
               <Link to="/profile" className={`nav-mobile-link ${isActive('/profile') ? 'active' : ''}`} onClick={() => setShowMobileMenu(false)}>
                 <User size={18} /> {t('nav_profile')}
               </Link>
+              {user.role === 'admin' && (
+                <Link to="/admin" className={`nav-mobile-link ${isActive('/admin') ? 'active' : ''}`} onClick={() => setShowMobileMenu(false)}>
+                  <Settings size={18} /> Admin Dashboard
+                </Link>
+              )}
               <button className="nav-mobile-link-btn" onClick={handleLogout}>
                 <LogOut size={18} /> {t('nav_logout')}
               </button>

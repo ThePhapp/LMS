@@ -21,6 +21,8 @@ import AssignmentDetail from './pages/AssignmentDetail';
 import { useContext } from 'react';
 import { AuthContext } from './contexts/AuthContext';
 import AiChat from './components/AiChat';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLayout from './components/AdminLayout';
 import { AnimatePresence, motion } from 'framer-motion';
 
 function PrivateRoute({ children, allowLearningLayout = false }) {
@@ -31,6 +33,15 @@ function PrivateRoute({ children, allowLearningLayout = false }) {
   
   if (allowLearningLayout) return children;
   return <div className="main-content">{children}</div>;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useContext(AuthContext);
+  
+  if (loading) return <div className="flex items-center justify-center h-screen w-screen"><div className="loader"></div></div>;
+  if (!user || user.role !== 'admin') return <Navigate to="/dashboard" />;
+  
+  return <AdminLayout>{children}</AdminLayout>;
 }
 
 const pageVariants = {
@@ -62,6 +73,20 @@ function AnimatedPage({ children }) {
 
 function AppContent() {
   const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  if (isAdminRoute) {
+    return (
+      <AdminRoute>
+        <AnimatePresence mode="wait">
+          <Routes key={location.pathname} location={location}>
+            <Route path="/admin" element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
+            <Route path="/admin/*" element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
+          </Routes>
+        </AnimatePresence>
+      </AdminRoute>
+    );
+  }
 
   return (
     <div className="app-container">

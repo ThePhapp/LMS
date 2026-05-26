@@ -69,6 +69,7 @@ app.use('/api/enrollments', require('./routes/enrollments'));
 app.use('/api/interactions', require('./routes/interactions'));
 app.use('/api/assignments', require('./routes/assignments'));
 app.use('/api/events', require('./routes/events'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {
   res.send('LMS API is running...');
