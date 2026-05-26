@@ -22,6 +22,7 @@ import { useContext } from 'react';
 import { AuthContext } from './contexts/AuthContext';
 import AiChat from './components/AiChat';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminCourses from './pages/AdminCourses';
 import AdminLayout from './components/AdminLayout';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -81,6 +82,7 @@ function AppContent() {
         <AnimatePresence mode="wait">
           <Routes key={location.pathname} location={location}>
             <Route path="/admin" element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
+            <Route path="/admin/courses" element={<AnimatedPage><AdminCourses /></AnimatedPage>} />
             <Route path="/admin/*" element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
           </Routes>
         </AnimatePresence>
