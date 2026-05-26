@@ -43,7 +43,7 @@ const Navbar = () => {
     try {
       await api.put(`/assignments/notifications/${id}/read`);
       fetchNotifications();
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleLogout = () => {
@@ -65,7 +65,7 @@ const Navbar = () => {
 
   const initial = user?.name?.charAt(0)?.toUpperCase() || '?';
   const avatarUrl = user?.avatar_url ? assetUrl(user.avatar_url) : null;
-  
+
   // Determine courses path based on user role
   const coursesPath = user?.role === 'lecturer' ? '/instructor/dashboard' : '/courses';
   const isCoursesActive = location.pathname === '/courses' || location.pathname === '/instructor/dashboard';
@@ -98,7 +98,7 @@ const Navbar = () => {
       {/* Desktop nav */}
       <div className="nav-links">
         {/* Navigation Links - Always visible */}
-        <button 
+        <button
           onClick={() => handleNavClick(coursesPath)}
           className={`nav-link ${isCoursesActive ? 'nav-link-active' : ''}`}
           style={{
@@ -112,7 +112,7 @@ const Navbar = () => {
             <BookOpen size={15} /> {t('nav_courses')}
           </span>
         </button>
-        <button 
+        <button
           onClick={() => handleNavClick('/timetable')}
           className={`nav-link ${isActive('/timetable') ? 'nav-link-active' : ''}`}
           style={{
@@ -126,7 +126,7 @@ const Navbar = () => {
             <Calendar size={15} /> {t('nav_timetable')}
           </span>
         </button>
-        <button 
+        <button
           onClick={() => handleNavClick('/guide')}
           className={`nav-link ${isActive('/guide') ? 'nav-link-active' : ''}`}
           style={{
@@ -140,7 +140,7 @@ const Navbar = () => {
             <MessageSquare size={15} /> {t('nav_guide')}
           </span>
         </button>
-        <button 
+        <button
           onClick={() => handleNavClick('/forum')}
           className={`nav-link ${isActive('/forum') ? 'nav-link-active' : ''}`}
           style={{
@@ -157,324 +157,324 @@ const Navbar = () => {
 
         {/* Language Switcher */}
         <div style={{ position: 'relative', marginLeft: '0.5rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }} ref={langMenuRef}>
-              <button 
-                onClick={() => setShowLangMenu(!showLangMenu)}
-                className="btn btn-ghost btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-              >
-                <Globe size={16} />
-                <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>{lang.toUpperCase()}</span>
-              </button>
-              
-              {showLangMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 0.5rem)',
-                  right: 0,
-                  background: 'var(--card-bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  minWidth: '140px',
-                  zIndex: 1000,
-                  overflow: 'hidden'
-                }}>
-                  <button
-                    onClick={() => {
-                      switchLang('vi');
-                      setShowLangMenu(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 0.875rem',
-                      textAlign: 'left',
-                      border: 'none',
-                      background: lang === 'vi' ? 'var(--primary-light)' : 'transparent',
-                      color: lang === 'vi' ? 'var(--primary)' : 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.8125rem',
-                      fontWeight: lang === 'vi' ? '600' : '400',
-                      transition: 'background 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = 'var(--primary-light)'}
-                    onMouseLeave={(e) => e.target.style.background = lang === 'vi' ? 'var(--primary-light)' : 'transparent'}
-                  >
-                    <span style={{ fontSize: '1rem' }}>🇻🇳</span>
-                    <span>Tiếng Việt</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchLang('en');
-                      setShowLangMenu(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 0.875rem',
-                      textAlign: 'left',
-                      border: 'none',
-                      background: lang === 'en' ? 'var(--primary-light)' : 'transparent',
-                      color: lang === 'en' ? 'var(--primary)' : 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.8125rem',
-                      fontWeight: lang === 'en' ? '600' : '400',
-                      transition: 'background 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = 'var(--primary-light)'}
-                    onMouseLeave={(e) => e.target.style.background = lang === 'en' ? 'var(--primary-light)' : 'transparent'}
-                  >
-                    <span style={{ fontSize: '1rem' }}>🇬🇧</span>
-                    <span>English</span>
-                  </button>
-                </div>
-              )}
-            </div>
+          <button
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            className="btn btn-ghost btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <Globe size={16} />
+            <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>{lang.toUpperCase()}</span>
+          </button>
 
-            {/* Notifications Menu */}
-            {user && (
-              <div style={{ position: 'relative', marginLeft: '0.5rem' }} ref={notifMenuRef}>
-                <button 
-                  onClick={() => setShowNotifMenu(!showNotifMenu)}
-                  className="btn btn-ghost btn-sm"
-                  style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '0.4rem' }}
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span style={{
-                      position: 'absolute', top: 0, right: 0,
-                      background: 'var(--danger)', color: '#fff',
-                      fontSize: '0.65rem', fontWeight: 700,
-                      borderRadius: '50%', width: '16px', height: '16px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transform: 'translate(25%, -25%)'
-                    }}>
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-                
-                {showNotifMenu && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 0.5rem)',
-                    right: 0,
-                    background: 'var(--card-bg)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    width: '320px',
-                    zIndex: 1000,
-                    overflow: 'hidden',
-                    display: 'flex', flexDirection: 'column',
-                    maxHeight: '400px'
-                  }}>
-                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Thông báo</span>
-                      {unreadCount > 0 && (
-                        <button onClick={() => markAsRead('all')} className="btn btn-ghost btn-sm" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>
-                          Đánh dấu đã đọc
-                        </button>
-                      )}
-                    </div>
-                    <div style={{ overflowY: 'auto', flex: 1 }}>
-                      {notifications.length === 0 ? (
-                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Không có thông báo mới</div>
-                      ) : (
-                        notifications.map(n => (
-                          <div 
-                            key={n.id} 
-                            style={{ 
-                              padding: '0.75rem 1rem', 
-                              borderBottom: '1px solid var(--border)', 
-                              background: n.is_read ? 'transparent' : 'var(--primary-light)',
-                              cursor: 'pointer',
-                              display: 'flex', flexDirection: 'column', gap: '0.25rem'
-                            }}
-                            onClick={() => {
-                              if (!n.is_read) markAsRead(n.id);
-                              // Can add navigate based on notification type here
-                              if (n.type === 'grade_posted' || n.type === 'quiz_posted' || n.type === 'assignment_posted') {
-                                navigate(`/assignments/${n.reference_id}`);
-                              } else if (n.type === 'submission_received') {
-                                navigate(`/instructor/assignment/${n.reference_id}/grading`);
-                              }
-                              setShowNotifMenu(false);
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <strong style={{ fontSize: '0.85rem', color: n.is_read ? 'var(--text)' : 'var(--primary-dark)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                {n.title}
-                              </strong>
-                            </div>
-                            {n.message && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{n.message}</div>}
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
-                              {new Date(n.created_at).toLocaleString('vi-VN')}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* User Menu - Only when logged in */}
-            {user && (
-            <div style={{ position: 'relative', marginLeft: '0.5rem' }} ref={userMenuRef}>
-              <button 
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="nav-user"
-                style={{ 
+          {showLangMenu && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 0.5rem)',
+              right: 0,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: '0.5rem',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              minWidth: '140px',
+              zIndex: 1000,
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => {
+                  switchLang('vi');
+                  setShowLangMenu(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 0.875rem',
+                  textAlign: 'left',
                   border: 'none',
-                  background: 'transparent',
+                  background: lang === 'vi' ? 'var(--primary-light)' : 'transparent',
+                  color: lang === 'vi' ? 'var(--primary)' : 'var(--text)',
                   cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  fontWeight: lang === 'vi' ? '600' : '400',
+                  transition: 'background 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '0.5rem',
-                  transition: 'background 0.2s'
+                  gap: '0.5rem'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                onMouseEnter={(e) => e.target.style.background = 'var(--primary-light)'}
+                onMouseLeave={(e) => e.target.style.background = lang === 'vi' ? 'var(--primary-light)' : 'transparent'}
               >
-                <div className="avatar" style={{ overflow: 'hidden' }}>
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    initial
-                  )}
-                </div>
-                <span style={{ color: 'var(--text)', fontSize: '0.875rem' }}>{user.name}</span>
-                <span className="badge badge-primary">{user.role}</span>
-                <ChevronDown size={16} style={{ color: 'var(--text-light)' }} />
+                <span style={{ fontSize: '1rem' }}>🇻🇳</span>
+                <span>Tiếng Việt</span>
               </button>
+              <button
+                onClick={() => {
+                  switchLang('en');
+                  setShowLangMenu(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 0.875rem',
+                  textAlign: 'left',
+                  border: 'none',
+                  background: lang === 'en' ? 'var(--primary-light)' : 'transparent',
+                  color: lang === 'en' ? 'var(--primary)' : 'var(--text)',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  fontWeight: lang === 'en' ? '600' : '400',
+                  transition: 'background 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'var(--primary-light)'}
+                onMouseLeave={(e) => e.target.style.background = lang === 'en' ? 'var(--primary-light)' : 'transparent'}
+              >
+                <span style={{ fontSize: '1rem' }}>🇬🇧</span>
+                <span>English</span>
+              </button>
+            </div>
+          )}
+        </div>
 
-              {showUserMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 0.5rem)',
-                  right: 0,
-                  background: 'var(--card-bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  minWidth: '200px',
-                  zIndex: 1000,
-                  overflow: 'hidden'
+        {/* Notifications Menu */}
+        {user && (
+          <div style={{ position: 'relative', marginLeft: '0.5rem' }} ref={notifMenuRef}>
+            <button
+              onClick={() => setShowNotifMenu(!showNotifMenu)}
+              className="btn btn-ghost btn-sm"
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '0.4rem' }}
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 0, right: 0,
+                  background: 'var(--danger)', color: '#fff',
+                  fontSize: '0.65rem', fontWeight: 700,
+                  borderRadius: '50%', width: '16px', height: '16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transform: 'translate(25%, -25%)'
                 }}>
-                  <Link
-                    to={coursesPath}
-                    onClick={() => setShowUserMenu(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.75rem 1rem',
-                      color: 'var(--text)',
-                      textDecoration: 'none',
-                      transition: 'background 0.2s',
-                      borderBottom: '1px solid var(--border)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <BookOpen size={16} />
-                    <span style={{ fontSize: '0.875rem' }}>{t('nav_courses')}</span>
-                  </Link>
-                  
-                  {user.role === 'admin' && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setShowUserMenu(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        color: 'var(--text)',
-                        textDecoration: 'none',
-                        transition: 'background 0.2s',
-                        borderBottom: '1px solid var(--border)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <Settings size={16} />
-                      <span style={{ fontSize: '0.875rem' }}>Admin Dashboard</span>
-                    </Link>
-                  )}
-                  
-                  <Link
-                    to="/profile"
-                    onClick={() => setShowUserMenu(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.75rem 1rem',
-                      color: 'var(--text)',
-                      textDecoration: 'none',
-                      transition: 'background 0.2s',
-                      borderBottom: '1px solid var(--border)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <User size={16} />
-                    <span style={{ fontSize: '0.875rem' }}>{t('nav_profile')}</span>
-                  </Link>
-
-                  <button
-                    onClick={handleLogout}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.75rem 1rem',
-                      border: 'none',
-                      background: 'transparent',
-                      color: 'var(--danger)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontSize: '0.875rem',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <LogOut size={16} />
-                    <span>{t('nav_logout')}</span>
-                  </button>
-                </div>
+                  {unreadCount}
+                </span>
               )}
-            </div>
-            )}
+            </button>
 
-            {/* Login/Register - Only when not logged in */}
-            {!user && (
-            <div style={{ marginLeft: '0.5rem' }}>
-              <Link to="/login" className="btn btn-secondary btn-sm">{t('nav_login')}</Link>
-              <Link to="/register" className="btn btn-primary btn-sm" style={{ marginLeft: '0.5rem' }}>Đăng ký</Link>
-            </div>
+            {showNotifMenu && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 0.5rem)',
+                right: 0,
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border)',
+                borderRadius: '0.5rem',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                width: '320px',
+                zIndex: 1000,
+                overflow: 'hidden',
+                display: 'flex', flexDirection: 'column',
+                maxHeight: '400px'
+              }}>
+                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Thông báo</span>
+                  {unreadCount > 0 && (
+                    <button onClick={() => markAsRead('all')} className="btn btn-ghost btn-sm" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>
+                      Đánh dấu đã đọc
+                    </button>
+                  )}
+                </div>
+                <div style={{ overflowY: 'auto', flex: 1 }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Không có thông báo mới</div>
+                  ) : (
+                    notifications.map(n => (
+                      <div
+                        key={n.id}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          borderBottom: '1px solid var(--border)',
+                          background: n.is_read ? 'transparent' : 'var(--primary-light)',
+                          cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', gap: '0.25rem'
+                        }}
+                        onClick={() => {
+                          if (!n.is_read) markAsRead(n.id);
+                          // Can add navigate based on notification type here
+                          if (n.type === 'grade_posted' || n.type === 'quiz_posted' || n.type === 'assignment_posted') {
+                            navigate(`/assignments/${n.reference_id}`);
+                          } else if (n.type === 'submission_received') {
+                            navigate(`/instructor/assignment/${n.reference_id}/grading`);
+                          }
+                          setShowNotifMenu(false);
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <strong style={{ fontSize: '0.85rem', color: n.is_read ? 'var(--text)' : 'var(--primary-dark)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {n.title}
+                          </strong>
+                        </div>
+                        {n.message && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{n.message}</div>}
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
+                          {new Date(n.created_at).toLocaleString('vi-VN')}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
           </div>
+        )}
 
-        {/* Hamburger button - mobile only */}
-        <button className="nav-hamburger" onClick={() => setShowMobileMenu(true)} aria-label="Mở menu">
-          <Menu size={24} />
-        </button>
+        {/* User Menu - Only when logged in */}
+        {user && (
+          <div style={{ position: 'relative', marginLeft: '0.5rem' }} ref={userMenuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="nav-user"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '0.5rem',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <div className="avatar" style={{ overflow: 'hidden' }}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  initial
+                )}
+              </div>
+              <span style={{ color: 'var(--text)', fontSize: '0.875rem' }}>{user.name}</span>
+              <span className="badge badge-primary">{user.role}</span>
+              <ChevronDown size={16} style={{ color: 'var(--text-light)' }} />
+            </button>
 
-        {/* Mobile overlay */}
-        <div
-          className={`nav-mobile-overlay ${showMobileMenu ? 'open' : ''}`}
+            {showUserMenu && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 0.5rem)',
+                right: 0,
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border)',
+                borderRadius: '0.5rem',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                minWidth: '200px',
+                zIndex: 1000,
+                overflow: 'hidden'
+              }}>
+                <Link
+                  to={coursesPath}
+                  onClick={() => setShowUserMenu(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    color: 'var(--text)',
+                    textDecoration: 'none',
+                    transition: 'background 0.2s',
+                    borderBottom: '1px solid var(--border)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <BookOpen size={16} />
+                  <span style={{ fontSize: '0.875rem' }}>{t('nav_courses')}</span>
+                </Link>
+
+                {user.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setShowUserMenu(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      color: 'var(--text)',
+                      textDecoration: 'none',
+                      transition: 'background 0.2s',
+                      borderBottom: '1px solid var(--border)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Settings size={16} />
+                    <span style={{ fontSize: '0.875rem' }}>Quản trị hệ thống</span>
+                  </Link>
+                )}
+
+                <Link
+                  to="/profile"
+                  onClick={() => setShowUserMenu(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    color: 'var(--text)',
+                    textDecoration: 'none',
+                    transition: 'background 0.2s',
+                    borderBottom: '1px solid var(--border)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <User size={16} />
+                  <span style={{ fontSize: '0.875rem' }}>{t('nav_profile')}</span>
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--danger)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '0.875rem',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <LogOut size={16} />
+                  <span>{t('nav_logout')}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Login/Register - Only when not logged in */}
+        {!user && (
+          <div style={{ marginLeft: '0.5rem' }}>
+            <Link to="/login" className="btn btn-secondary btn-sm">{t('nav_login')}</Link>
+            <Link to="/register" className="btn btn-primary btn-sm" style={{ marginLeft: '0.5rem' }}>Đăng ký</Link>
+          </div>
+        )}
+      </div>
+
+      {/* Hamburger button - mobile only */}
+      <button className="nav-hamburger" onClick={() => setShowMobileMenu(true)} aria-label="Mở menu">
+        <Menu size={24} />
+      </button>
+
+      {/* Mobile overlay */}
+      <div
+        className={`nav-mobile-overlay ${showMobileMenu ? 'open' : ''}`}
         onClick={() => setShowMobileMenu(false)}
         onKeyDown={e => e.key === 'Escape' && setShowMobileMenu(false)}
         role="button"
@@ -512,7 +512,7 @@ const Navbar = () => {
 
         <div className="nav-mobile-links">
           {/* Navigation Links - Always visible */}
-          <button 
+          <button
             onClick={() => {
               handleNavClick(coursesPath);
               setShowMobileMenu(false);
@@ -522,7 +522,7 @@ const Navbar = () => {
           >
             <BookOpen size={18} /> {t('nav_courses')}
           </button>
-          <button 
+          <button
             onClick={() => {
               handleNavClick('/timetable');
               setShowMobileMenu(false);
@@ -532,7 +532,7 @@ const Navbar = () => {
           >
             <Calendar size={18} /> {t('nav_timetable')}
           </button>
-          <button 
+          <button
             onClick={() => {
               handleNavClick('/guide');
               setShowMobileMenu(false);
@@ -542,7 +542,7 @@ const Navbar = () => {
           >
             <MessageSquare size={18} /> {t('nav_guide')}
           </button>
-          <button 
+          <button
             onClick={() => {
               handleNavClick('/forum');
               setShowMobileMenu(false);
@@ -561,7 +561,7 @@ const Navbar = () => {
               </Link>
               {user.role === 'admin' && (
                 <Link to="/admin" className={`nav-mobile-link ${isActive('/admin') ? 'active' : ''}`} onClick={() => setShowMobileMenu(false)}>
-                  <Settings size={18} /> Admin Dashboard
+                  <Settings size={18} /> Quản trị hệ thống
                 </Link>
               )}
               <button className="nav-mobile-link-btn" onClick={handleLogout}>
