@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff } from 'lucide-react';
+import { getRoleHomePath } from '../routing/access';
 
 const Login = () => {
   const { login } = useContext(AuthContext);
@@ -18,10 +19,10 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      const authenticatedUser = await login(email, password);
       // Chuyển hướng tới trang được yêu cầu hoặc dashboard
-      const from = location.state?.from || '/';
-      navigate(from);
+      const from = location.state?.from || getRoleHomePath(authenticatedUser.role);
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
     } finally {
