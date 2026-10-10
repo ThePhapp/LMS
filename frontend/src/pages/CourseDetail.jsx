@@ -4,6 +4,7 @@ import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { PlayCircle, FileText, FileVideo, CheckCircle2, Users, BookOpen, GraduationCap, Star, ArrowLeft, Clock, Award, Target, Layers } from 'lucide-react';
+import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 function getYoutubeId(url) {
   if (!url) return null;
@@ -20,19 +21,20 @@ const CourseDetail = () => {
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isEnrolled, setIsEnrolled] = useState(false);
 
   const fetchCourse = useCallback(async () => {
     try {
       const res = await api.get(`/courses/${id}`);
       setCourse(res.data);
-    } catch (error) {
-      console.error('Không thể tải khóa học', error);
-      navigate('/courses'); 
+    } catch (requestError) {
+      console.error('Không thể tải khóa học', requestError);
+      setError(requestError.response?.data?.message || 'Không thể tải thông tin khóa học.');
     } finally { 
       setLoading(false); 
     }
-  }, [id, navigate]);
+  }, [id]);
 
   const checkEnrollment = useCallback(async () => {
     try {
@@ -59,7 +61,8 @@ const CourseDetail = () => {
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải khóa học...</p></div>;
+  if (loading) return <PageLoadingState label="Đang tải khóa học" />;
+  if (error) return <ErrorState title="Không thể tải khóa học" detail={error} onRetry={() => { setLoading(true); setError(''); fetchCourse(); }} />;
   if (!course) return null;
 
   const isOwner = user?.role === 'lecturer' && user?.id === course.lecturer_id;
@@ -79,7 +82,7 @@ const CourseDetail = () => {
   ];
 
   return (
-    <div className="main-content">
+    <div className="main-content course-detail-page">
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1rem', color: 'var(--text-muted)' }} onClick={() => navigate('/courses')}>
         <ArrowLeft size={16} /> Quay lại danh sách
       </button>
@@ -193,7 +196,7 @@ const CourseDetail = () => {
                           }
                           <span style={{ flex: 1, fontSize: '0.92rem', fontWeight: 500 }}>{lesson.title}</span>
                           {lesson.duration && (
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="cd-lesson-duration" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Clock size={12} /> {lesson.duration}
                             </span>
                           )}

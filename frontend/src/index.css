@@ -2192,6 +2192,7 @@ img, video, iframe { max-width: 100%; }
   line-height: 1.25;
   margin-bottom: 0.75rem;
   letter-spacing: -0.5px;
+  text-wrap: balance;
 }
 .cd-hero-desc {
   font-size: 1rem;
@@ -2325,6 +2326,7 @@ img, video, iframe { max-width: 100%; }
   border-top: 1px solid var(--border);
   transition: background 0.2s ease;
 }
+.cd-lesson-row > span { min-width: 0; }
 .cd-lesson-row:hover {
   background: var(--surface-2);
 }
@@ -2683,6 +2685,19 @@ img, video, iframe { max-width: 100%; }
   }
 }
 
+@media (max-width: 600px) {
+  .cd-hero { margin-inline: -0.25rem; padding: 1.5rem 1rem; border-radius: var(--radius-sm); }
+  .cd-hero h1 { font-size: 1.55rem; }
+  .cd-hero-stats { gap: .75rem 1rem; }
+  .cd-hero-stat { font-size: .78rem; }
+  .cd-section { padding: 1.25rem 1rem; }
+  .cd-section-title { font-size: 1.05rem; }
+  .cd-chapter-header, .cd-lesson-row { padding-inline: .85rem; }
+  .cd-lesson-row { gap: .65rem; }
+  .cd-lesson-row > span { font-size: .85rem !important; }
+  .cd-lesson-duration { display: none !important; }
+}
+
 /* --- ADMIN LAYOUT --------------------------------- */
 .admin-layout {
   display: flex;
@@ -2851,4 +2866,110 @@ img, video, iframe { max-width: 100%; }
   .admin-content {
     padding: 1rem;
   }
+}
+
+/* ─── ADMIN UI FOUNDATION ─────────────────────── */
+.admin-brand { display: flex; align-items: center; gap: .65rem; color: var(--text); font-size: 1rem; font-weight: 750; letter-spacing: -.02em; }
+.admin-brand-icon { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--primary-light); color: var(--primary); }
+.admin-sidebar-close { display: none; width: 40px; height: 40px; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); cursor: pointer; }
+.admin-sidebar-close:hover, .admin-hamburger:hover { background: var(--button-hover); color: var(--text); }
+.admin-nav-label { padding: 0 .75rem; margin-bottom: .35rem; color: var(--text-light); font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.admin-nav-link { min-height: 44px; }
+.admin-nav-link.active { border-left: 3px solid var(--primary); padding-left: calc(1rem - 3px); }
+.admin-nav-chevron { margin-left: auto; opacity: 0; }
+.admin-nav-link.active .admin-nav-chevron { opacity: 1; }
+.admin-logout { width: 100%; min-height: 44px; display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--danger); font-size: .9rem; font-weight: 600; cursor: pointer; text-align: left; }
+.admin-logout:hover { background: var(--danger-bg); }
+.admin-topbar-left, .admin-topbar-right, .admin-user-profile { display: flex; align-items: center; }
+.admin-topbar-left { gap: .75rem; min-width: 0; }
+.admin-topbar-right { gap: .65rem; }
+.admin-hamburger { display: none; width: 40px; height: 40px; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); cursor: pointer; }
+.admin-search-input { min-height: 40px; color: var(--text); }
+.admin-notification-dot { position: absolute; top: 6px; right: 5px; width: 7px; height: 7px; border: 2px solid var(--surface); border-radius: 50%; background: var(--danger); }
+.admin-icon-btn { position: relative; }
+.admin-topbar-divider { width: 1px; height: 28px; background: var(--border); }
+.admin-user-profile { gap: .6rem; }
+.admin-user-copy { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.admin-user-copy strong { max-width: 180px; overflow: hidden; color: var(--text); font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
+.admin-user-copy small { margin-top: .15rem; color: var(--text-muted); font-size: .7rem; text-transform: capitalize; }
+.admin-user-avatar { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--border); border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; font-size: .9rem; font-weight: 700; }
+.admin-user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.admin-sidebar-overlay { width: 100%; padding: 0; border: 0; cursor: default; }
+
+@media (max-width: 1024px) {
+  .admin-hamburger, .admin-sidebar-close { display: inline-flex; }
+  .admin-topbar { padding: 0 1rem; }
+  .admin-search { display: none; }
+  .admin-sidebar { box-shadow: var(--shadow-lg); }
+  .admin-content { padding: clamp(1rem, 3vw, 1.5rem); }
+}
+
+@media (max-width: 520px) {
+  .admin-user-copy { display: none; }
+  .admin-topbar-right { gap: .35rem; }
+  .admin-content { padding: 1rem; }
+}
+
+/* ─── DASHBOARD & CATALOG UI ───────────────────── */
+.dashboard-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+}
+.dashboard-hero h1 { margin: .25rem 0 .35rem; font-size: clamp(1.45rem, 3vw, 1.8rem); font-weight: 750; letter-spacing: -.03em; }
+.dashboard-hero p { margin: 0; color: rgba(255,255,255,.84); font-size: .95rem; }
+.dashboard-hero .dashboard-kicker { color: rgba(255,255,255,.68); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.dashboard-hero-action { border-color: rgba(255,255,255,.68); background: #fff; color: var(--primary-dark); }
+.dashboard-hero-action:hover { border-color: #fff; background: var(--surface-2); color: var(--primary-dark); }
+.course-list-layout { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.course-sidebar { position: sticky; top: 88px; min-width: 0; }
+.course-filter-card { box-shadow: var(--shadow-xs); }
+.course-filter-card h4 { color: var(--text-muted) !important; font-size: .75rem !important; letter-spacing: .06em; }
+.course-filter-card input[type="radio"] { width: 16px; height: 16px; accent-color: var(--primary); }
+.course-main { min-width: 0; }
+.catalog-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.catalog-header .search-bar input { min-height: 40px; }
+
+@media (max-width: 768px) {
+  .course-list-layout { grid-template-columns: 1fr; gap: 1rem; }
+  .course-sidebar { display: none; position: static; }
+  .course-sidebar.show { display: block; }
+  .catalog-header { align-items: stretch; }
+  .catalog-header > div:last-child { max-width: none !important; }
+  .catalog-header .d-md-none { display: inline-flex !important; }
+  .course-filter-card { padding: 1rem !important; }
+}
+
+@media (max-width: 520px) {
+  .dashboard-hero { align-items: stretch; }
+  .dashboard-hero-action { width: 100%; }
+  .stats-grid { grid-template-columns: 1fr; gap: .75rem; }
+}
+
+/* ─── ADMIN WORKSPACE CONTENT ─────────────────── */
+.admin-page { max-width: 1440px; margin: 0 auto; }
+.admin-page-header h1 { text-wrap: balance; }
+.admin-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.admin-table-card { box-shadow: var(--shadow-xs) !important; }
+.admin-table-card table { min-width: 620px; }
+.admin-table-card th { color: var(--text-muted) !important; }
+.admin-table-card td { color: var(--text); }
+
+@media (max-width: 900px) {
+  .admin-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 560px) {
+  .admin-stat-grid { grid-template-columns: 1fr !important; }
+  .admin-dashboard-page .admin-table-card > div:first-child { align-items: stretch !important; }
+  .admin-dashboard-page .admin-table-card > div:first-child > div:last-child { width: 100%; flex-wrap: wrap; }
+  .admin-dashboard-page .admin-table-card input { width: min(100%, 220px) !important; }
 }

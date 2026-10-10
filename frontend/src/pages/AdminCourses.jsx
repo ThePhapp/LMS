@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BookOpen, Search, RefreshCw, Trash2, Users, FileText, Tag, AlertTriangle, X, ChevronDown, Eye } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api, { assetUrl } from '../services/api';
+import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 const LEVEL_CONFIG = {
   'Beginner':     { label: 'Cơ bản',    bg: '#D1FAE5', color: '#059669', border: '#6EE7B7' },
@@ -24,7 +26,7 @@ const DeleteModal = ({ course, onConfirm, onCancel, loading }) => (
     background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
   }}>
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -67,7 +69,7 @@ const DeleteModal = ({ course, onConfirm, onCancel, loading }) => (
           {loading ? 'Đang xoá...' : 'Xoá khoá học'}
         </button>
       </div>
-    </motion.div>
+    </Motion.div>
   </div>
 );
 
@@ -135,11 +137,11 @@ const AdminCourses = () => {
   const levels = ['all', 'Beginner', 'Intermediate', 'Advanced'];
 
   return (
-    <div>
+    <div className="admin-page admin-courses-page">
       {/* Toast */}
       <AnimatePresence>
         {toast && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
             style={{
               position: 'fixed', top: 20, right: 20, zIndex: 200,
@@ -153,7 +155,7 @@ const AdminCourses = () => {
             }}
           >
             {toast.type === 'error' ? <AlertTriangle size={16} /> : '✓'} {toast.msg}
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
 
@@ -170,7 +172,7 @@ const AdminCourses = () => {
       </AnimatePresence>
 
       {/* Header */}
-      <div style={{ marginBottom: '1.75rem' }}>
+      <div className="admin-page-header" style={{ marginBottom: '1.75rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 4 }}>
           Quản lý Khoá học
         </h1>
@@ -203,7 +205,7 @@ const AdminCourses = () => {
       </div>
 
       {/* Main Card */}
-      <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+      <div className="admin-table-card" style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
 
         {/* Toolbar */}
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -276,16 +278,9 @@ const AdminCourses = () => {
 
         {/* Table */}
         {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748B' }}>
-            <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-            <p style={{ fontSize: '0.9rem' }}>Đang tải danh sách khoá học...</p>
-          </div>
+          <PageLoadingState label="Đang tải danh sách khóa học" />
         ) : error ? (
-          <div style={{ padding: '2rem' }}>
-            <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#DC2626', padding: '1rem 1.25rem', borderRadius: 10, borderLeft: '4px solid #EF4444' }}>
-              {error}
-            </div>
-          </div>
+          <ErrorState title="Không thể tải danh sách khóa học" detail={error} onRetry={fetchCourses} />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
@@ -307,7 +302,7 @@ const AdminCourses = () => {
                   const lvlCfg = LEVEL_CONFIG[course.level] || LEVEL_CONFIG['Beginner'];
                   const catCfg = CATEGORY_COLORS[course.category] || CATEGORY_COLORS['General'];
                   return (
-                    <motion.tr
+                    <Motion.tr
                       key={course.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -396,7 +391,7 @@ const AdminCourses = () => {
                           </button>
                         </div>
                       </td>
-                    </motion.tr>
+                    </Motion.tr>
                   );
                 })}
                 {filtered.length === 0 && !loading && (
