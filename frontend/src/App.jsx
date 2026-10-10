@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import Navbar from './components/AppNavbar';
 import { lazy, Suspense, useContext } from 'react';
 import { AuthContext } from './contexts/AuthContext';
 import AiChat from './components/AiChat';
+import { PageLoadingState } from './components/ui/Feedback';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
   ADMIN_ROLES,
@@ -35,14 +36,14 @@ const AdminCourses = lazy(() => import('./pages/AdminCourses'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 
 function RouteFallback() {
-  return <div className="main-content" role="status">Đang tải trang...</div>;
+  return <PageLoadingState label="Đang tải trang" />;
 }
 
 function PrivateRoute({ children, allowLearningLayout = false, allowedRoles = AUTHENTICATED_ROLES }) {
   const { user, loading } = useContext(AuthContext);
   const location = useLocation();
   
-  if (loading) return <div className="main-content">Loading...</div>;
+  if (loading) return <PageLoadingState label="Đang xác thực phiên đăng nhập" />;
   if (!user) {
     const from = `${location.pathname}${location.search}${location.hash}`;
     return <Navigate to="/login" replace state={{ from }} />;
@@ -58,7 +59,7 @@ function PrivateRoute({ children, allowLearningLayout = false, allowedRoles = AU
 function AdminRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
   
-  if (loading) return <div className="flex items-center justify-center h-screen w-screen"><div className="loader"></div></div>;
+  if (loading) return <PageLoadingState label="Đang xác thực quyền quản trị" />;
   if (!user) return <Navigate to="/login" replace />;
   if (!hasAllowedRole(user, ADMIN_ROLES)) {
     return <Navigate to={getRoleHomePath(user.role)} replace />;
@@ -101,15 +102,17 @@ function AppContent() {
 
   if (isAdminRoute) {
     return (
-      <AdminRoute>
-        <AnimatePresence mode="wait">
-          <Routes key={location.pathname} location={location}>
-            <Route path="/admin" element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
-            <Route path="/admin/courses" element={<AnimatedPage><AdminCourses /></AnimatedPage>} />
-            <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
-          </Routes>
-        </AnimatePresence>
-      </AdminRoute>
+      <Suspense fallback={<RouteFallback />}>
+        <AdminRoute>
+          <AnimatePresence mode="wait">
+            <Routes key={location.pathname} location={location}>
+              <Route path="/admin" element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
+              <Route path="/admin/courses" element={<AnimatedPage><AdminCourses /></AnimatedPage>} />
+              <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+            </Routes>
+          </AnimatePresence>
+        </AdminRoute>
+      </Suspense>
     );
   }
 
@@ -117,8 +120,9 @@ function AppContent() {
     <div className="app-container">
       <Navbar />
       <main className="main-layout">
-        <AnimatePresence mode="wait">
-          <Routes key={location.pathname} location={location}>
+        <Suspense fallback={<RouteFallback />}>
+          <AnimatePresence mode="wait">
+            <Routes key={location.pathname} location={location}>
             <Route path="/" element={<AnimatedPage><Landing /></AnimatedPage>} />
             <Route path="/login" element={<AnimatedPage><Login /></AnimatedPage>} />
             <Route path="/register" element={<AnimatedPage><Register /></AnimatedPage>} />
@@ -144,8 +148,9 @@ function AppContent() {
             <Route path="/guide" element={<PrivateRoute><AnimatedPage><Guide /></AnimatedPage></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><AnimatedPage><Profile /></AnimatedPage></PrivateRoute>} />
             <Route path="*" element={<Navigate to={getRoleHomePath(user?.role)} replace />} />
-          </Routes>
-        </AnimatePresence>
+            </Routes>
+          </AnimatePresence>
+        </Suspense>
       </main>
       <AiChat />
     </div>
@@ -155,9 +160,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <Suspense fallback={<RouteFallback />}>
-        <AppContent />
-      </Suspense>
+      <AppContent />
     </Router>
   );
 }
