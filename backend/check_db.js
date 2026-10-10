@@ -1,35 +1,30 @@
-require('dotenv').config();
+const dotenv = require('dotenv');
 const { Pool } = require('pg');
 
-async function checkData() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('localhost')
-      ? false
-      : { rejectUnauthorized: false },
-  });
+const { createPoolConfig } = require('./config/postgres');
+const { assertSchema, inspectSchema } = require('./db/schemaCheck');
 
+async function main() {
+  dotenv.config();
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+  const pool = new Pool(createPoolConfig(process.env, { application_name: 'lms-schema-check' }));
+  const client = await pool.connect();
   try {
-    console.log('Checking database...\n');
-    
-    const tables = ['users', 'courses', 'chapters', 'lessons', 'assignments', 'enrollments'];
-    
-    for (const table of tables) {
-      const result = await pool.query(`SELECT COUNT(*) as count FROM ${table}`);
-      console.log(`${table}: ${result.rows[0].count} rows`);
-    }
-    
-    // Show users
-    const users = await pool.query('SELECT id, name, email, role FROM users LIMIT 10');
-    console.log('\n👥 Users:');
-    users.rows.forEach(u => console.log(`  ${u.id}. ${u.name} (${u.email}) - ${u.role}`));
-    
-  } catch (error) {
-    console.error('Error:', error.message);
+    await client.query('SELECT 1');
+    const report = await inspectSchema(client);
+    assertSchema(report);
+    console.log('Database connectivity and schema checks passed');
   } finally {
+    client.release();
     await pool.end();
-    process.exit();
   }
 }
 
-checkData();
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`Database check failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { main };

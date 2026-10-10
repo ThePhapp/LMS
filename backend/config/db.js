@@ -1,19 +1,69 @@
 const { Pool } = require('pg');
+const { createPoolConfig } = require('./postgres');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost')
-    ? false
-    : { rejectUnauthorized: false },
-});
+const pool = new Pool(createPoolConfig());
 
-// Convert MySQL-style ? placeholders to PostgreSQL $1, $2, ...
+// Convert the legacy query facade's ? placeholders to PostgreSQL $1, $2, ...
 function toPostgres(sql) {
-  let i = 0;
-  return sql.replace(/\?/g, () => `$${++i}`);
+  let parameter = 0;
+  let output = '';
+  let quote = null;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const character = sql[index];
+    const next = sql[index + 1];
+
+    if (lineComment) {
+      output += character;
+      if (character === '\n') lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      output += character;
+      if (character === '*' && next === '/') {
+        output += next;
+        index += 1;
+        blockComment = false;
+      }
+      continue;
+    }
+    if (quote) {
+      output += character;
+      if (character === quote) {
+        if (next === quote) {
+          output += next;
+          index += 1;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (character === '-' && next === '-') {
+      output += character + next;
+      index += 1;
+      lineComment = true;
+      continue;
+    }
+    if (character === '/' && next === '*') {
+      output += character + next;
+      index += 1;
+      blockComment = true;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      output += character;
+      continue;
+    }
+    output += character === '?' ? `$${++parameter}` : character;
+  }
+  return output;
 }
 
-// Wrap a pg Pool/Client query to return [rows] matching mysql2/promise API shape.
+// Preserve the controllers' historical tuple return shape while using pg underneath.
 function createQueryExecutor(queryable) {
   return {
     query: async (sql, params = []) => {
@@ -45,5 +95,8 @@ db.withTransaction = async (callback) => {
     client.release();
   }
 };
+
+db.close = () => pool.end();
+db.toPostgres = toPostgres;
 
 module.exports = db;
