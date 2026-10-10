@@ -1,0 +1,58 @@
+# Kế hoạch task và commit
+
+Quy trình: `AUDIT → PLAN → IMPLEMENT → TEST → REVIEW → COMMIT → NEXT`.
+
+Trạng thái hợp lệ: `TODO`, `IN PROGRESS`, `BLOCKED`, `DONE`. Mỗi task chỉ chuyển `DONE` sau khi test/verification tương ứng chạy xong. Không stage `backend/.env` hoặc artifact người dùng.
+
+## Task board
+
+| ID | Priority | Scope | Agent | Dependencies | Files affected | Acceptance criteria | Test command | Status | Commit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| AUD-001 | P0 | Baseline, source/doc drift, audit report, task board | Lead + A/B/E/F | — | `docs/AUDIT_REPORT.md`, `docs/TASK_PLAN.md` | Baseline có PASS/FAIL/BLOCKED; P0-P3 có evidence; không đọc/stage `.env` | `npm run lint`; `npm run build`; backend `node --check`; `/ping`; DB `SELECT 1`; `npm audit --omit=dev` | DONE | `42dc5bd` |
+| SEC-001 | P0 | Chặn role escalation; validation auth cơ bản; JWT hardening tối thiểu | Backend | AUD-001 | auth controller/middleware/routes, tests | Public register không thể tạo admin/lecturer; privileged role lấy từ DB; input lỗi trả 4xx; regression tests PASS | `node --test test/authController.test.js test/authMiddleware.test.js` | DONE | `8706b86` |
+| SEC-002 | P0 | Fail-closed ZIP; chống symlink/bomb/path traversal; cleanup | AI & Files + Security | AUD-001 | lesson routes/controller, zip handler, storage, tests | ZIP nguy hiểm bị reject trước upload; budget rõ; temp/R2 rollback; không còn dependency vulnerable trong path | `node --test backend/test/zipHandler.test.js`; `npm ls extract-zip yauzl --depth=0` | DONE | `3dd50fd` |
+| REPO-001 | P0 | Secret/artifact hygiene | Lead | AUD-001 | `.gitignore`, Git index | `.env`, `node_modules`, upload tmp không còn track; lockfiles được giữ; local `.env` còn nguyên nhưng ignored | `git ls-files` assertions; secret scan redacted | DONE | `e39fd0d` |
+| AUTHZ-001 | P1 | Course/enrollment/assignment/submission ownership matrix | Backend + LMS | SEC-001 | assignment/course/enrollment/lesson/interaction policies, tests | Cross-course lecturer/student access trả 403/404; owner/admin/enrolled paths đúng; quiz answer không leak; paid self-enroll bị chặn | `node --test` (49 tests) | DONE | `d5a87ad` |
+| LMS-001A | P0 | Chặn data-loss khi sửa assignment | Frontend | AUD-001 | `CourseEditor.jsx` | Edit dùng PUT, không xóa assignment cũ; creation vẫn dùng POST; build PASS | focused `rg`; `npm run build` | DONE | `4499f7e` |
+| LMS-001B | P1 | Lịch biểu: lọc ngày, validation và ownership | Lead | SEC-001 | event controller, tests | Admin filter tạo SQL hợp lệ; khoảng ngày/type/status lỗi trả 4xx; event gắn đúng course owner; không leak raw DB error | `node --test backend/test/eventController.test.js` | DONE | `017b92c` |
+| LMS-001 | P1 | Assignment lifecycle, attempts, grading, gradebook | LMS | AUTHZ-001 | assignment controller, DB transaction helper/tests | Bulk save transaction; attempt atomic; grade range; progress đúng | `node --test backend/test/assignmentController.test.js`; `node --check` | DONE | `32658f7` |
+| FILE-001 | P1 | Private upload/download, MIME verification, R2 deletion | AI & Files | SEC-002, AUTHZ-001 | upload routes, storage service, viewer/API | Submission/lesson file không public trực tiếp; magic-byte/type policy; signed/auth access; delete/replace cleanup | backend 63 tests + direct `/uploads` 404; frontend build | DONE | `12c3645` |
+| AI-001 | P1 | Backend Gemini proxy, auth/rate/token/history/privacy | AI & Files | SEC-001, API-001 | backend AI route/service, two frontend chat components, docs/tests | Không còn `VITE_GEMINI_API_KEY`; bounded prompt/history/timeout; auth/rate limit; clear errors | frontend build grep key/Google URL; backend AI tests | DONE | `04c8d02` |
+| API-001 | P1 | Express app factory, config validation, errors, headers, rate limits | Backend | SEC-001 | `server.js`, config, middleware, package files, tests | Central error shape; security headers; body/time/rate limits; testable app; `/health` hoặc docs thống nhất | `npm test`; startup smoke; header assertions | DONE | `621937d` |
+| DB-001 | P1 | PostgreSQL canonical migrations/constraints/indexes/transactions | Database | AUTHZ-001, LMS-001 | db config, migrations, init/seed scripts, package scripts | Không MySQL drift; migration idempotent/non-destructive; FK/index/unique đúng; TLS config rõ | 69 backend tests + migration fake-executor/schema assertions; live test DB BLOCKED do DNS tenant | DONE | `766e4a4` |
+| FE-001A | P1 | Session storage, `/auth/me`, 401 handling và role guards | Frontend | SEC-001, AUTHZ-001 | App, AuthContext, API client, auth pages, helper/tests | localStorage hỏng không crash; identity refresh giữ token; 401 không loop; instructor/admin guard; register không gửi role | node tests; focused ESLint; production build | DONE | `93be501` |
+| FE-001 | P1 | AuthContext/API client/role guards/lint/runtime bugs/lazy routes | Frontend | SEC-001, API-001 | App, contexts, services, affected pages/components | 0 lint error; stale state/promise cleanup; instructor/admin guards; 401 handling; bundle split | lint 0/0; production build PASS (main 342.10 kB, route chunks); Playwright smoke landing/auth/guard PASS | DONE | `3fdcf07` |
+| UI-001 | P2 | Design system + app shell + auth/dashboard/course/learning/admin/viewer screens (epic) | Frontend UI | FE-001, FILE-001, AI-001 | CSS, shared UI components, pages | Brand indigo giữ nguyên; component/state nhất quán; desktop/tablet/375px không overflow; keyboard labels; loading/error/empty | UI probe sweep 375/768/1280/1440/1920 + screenshots | IN PROGRESS | pending |
+| UI-001A | P2 | Design foundation, app shell, responsive navbar, auth and feedback states | Frontend UI | FE-001 | `index.css`, `App.jsx`, `AppNavbar`, auth pages, shared feedback | Solid indigo actions; 40/44px controls; accessible labels/focus; route-level loading; auth forms responsive at 375px; no overflow | `npm run lint`; `npm run build`; `probe.mjs` public sweep 375/768/1024/1280/1440/1920 | DONE | `e4d4deb` |
+| UI-001B | P2 | Dashboard, course catalog/detail and admin workspace screens | Frontend UI | UI-001A | dashboard/catalog/admin pages and shared cards/tables | Consistent cards/tables/filters; loading/error/empty states; mobile actions retained; no horizontal overflow | lint 0/0; production build PASS; Playwright mocked dashboard/admin smoke at desktop + 375px PASS | DONE | `80ef755` |
+| UI-001C | P2 | Course learning, editor, assignment, package viewer and AI surfaces | Frontend UI | UI-001A | learning/editor/viewer/chat pages and shared overlays | Progress/lesson/assignment states consistent; keyboard labels; private-file errors understandable; responsive 375px layout | lint 0/0; production build PASS; Playwright mocked learning/editor/assignment smoke + 375px screenshots PASS | DONE | `d51d818` |
+| QA-001 | P1 | Backend/frontend/integration/E2E/CI | QA & Security | SEC-*, AUTHZ-001, LMS-001, FE-001 | tests, fixtures, CI workflow | Route matrix + critical flows chạy; PASS/FAIL/SKIPPED trung thực; audit gate trong CI | backend 69/69; frontend 4/4; lint 0/0; build PASS; mocked Playwright critical flows; production audits 0 | DONE | `8a90c1c` |
+| DOC-001 | P2 | README/setup/API/auth/storage/AI/deploy/troubleshooting/final report | Lead | All completed tasks | `README.md`, `frontend/README.md`, `docs/FINAL_REPORT.md` | Tài liệu khớp source/version/script; task→commit map; limitation và blocked evidence | Link/script verification; final regression | DONE | `3860a59` |
+
+## Thứ tự triển khai
+
+1. `AUD-001`
+2. `SEC-001`, `SEC-002`, `REPO-001`
+3. `AUTHZ-001`, `API-001`
+4. `LMS-001`, `FILE-001`, `AI-001`, `DB-001`
+5. `FE-001`, `UI-001`
+6. `QA-001`, `DOC-001`
+
+Task độc lập chỉ chạy song song khi write-set không giao nhau. Mọi migration phải additive/idempotent; không reset hoặc xóa dữ liệu production.
+
+## Baseline test ledger
+
+| Test | Result | Note |
+| --- | --- | --- |
+| Frontend lint | FAIL | 44 errors, 15 warnings |
+| Frontend build | PASS/WARN | Main JS 715.55 kB |
+| Backend startup | PASS | Port 5000 |
+| `GET /ping` | PASS | Health response hợp lệ |
+| Backend syntax | PASS | All JS |
+| Database `SELECT 1` | BLOCKED/FAIL | DNS/tenant `ENOTFOUND` |
+| Backend tests | SKIPPED | Không tồn tại |
+| Frontend tests | SKIPPED | Không tồn tại |
+| E2E | BLOCKED | DB chưa kết nối, chưa có fixture |
+| Frontend production audit | FAIL | 5 vulnerabilities |
+| Backend production audit | FAIL | 9 vulnerabilities |
+

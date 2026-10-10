@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { useState } from 'react';
+import { LangContext } from './langContextValue';
 
 const translations = {
   vi: {
@@ -319,8 +320,6 @@ const translations = {
   },
 };
 
-export const LangContext = createContext();
-
 export const LangProvider = ({ children }) => {
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'vi');
 
@@ -337,5 +336,3 @@ export const LangProvider = ({ children }) => {
     </LangContext.Provider>
   );
 };
-
-export const useLang = () => useContext(LangContext);

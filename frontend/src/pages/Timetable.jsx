@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
@@ -46,12 +46,7 @@ const Timetable = () => {
     course_id: '', title: '', start_time: '', end_time: '', event_type: 'lecture', meeting_link: ''
   });
 
-  useEffect(() => {
-    fetchEvents();
-    if (user?.role === 'lecturer' || user?.role === 'admin') fetchCourses();
-  }, [currentDate]);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     // Ideally pass dates to filter, for now let's just get all
     const startOfWeek = getStartOfWeek(currentDate);
@@ -65,30 +60,37 @@ const Timetable = () => {
       setEvents(res.data);
       
       // Auto-extract distinct courses for the filter if student (since we only fetch active ones)
-      if (user?.role === 'student' && Object.keys(selectedCourses).length === 0) {
+      if (user?.role === 'student') {
         const uniqueCourses = [...new Set(res.data.map(e => e.course_id))];
         const stateMapping = {};
         uniqueCourses.forEach(id => stateMapping[id] = true);
-        setSelectedCourses(stateMapping);
+        setSelectedCourses(previous => Object.keys(previous).length === 0 ? stateMapping : previous);
       }
     } catch(err) {
       console.error(err);
     } finally { setLoading(false); }
-  };
+  }, [currentDate, user?.role]);
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       const res = await api.get('/courses');
-      const myCourses = user.role === 'admin' ? res.data : res.data.filter(c => c.lecturer_id === user.id);
+      const myCourses = user?.role === 'admin' ? res.data : res.data.filter(c => c.lecturer_id === user?.id);
       setCourses(myCourses);
-      if (Object.keys(selectedCourses).length === 0) {
-        const map = {};
-        myCourses.forEach(c => map[c.id] = true);
-        setSelectedCourses(map);
-        if (myCourses.length > 0) setNewEvent({...newEvent, course_id: myCourses[0].id});
+      const map = {};
+      myCourses.forEach(c => map[c.id] = true);
+      setSelectedCourses(previous => Object.keys(previous).length === 0 ? map : previous);
+      if (myCourses.length > 0) {
+        setNewEvent(previous => previous.course_id ? previous : { ...previous, course_id: myCourses[0].id });
       }
-    } catch {}
-  };
+    } catch (error) {
+      console.error('Không thể tải khóa học cho thời khóa biểu', error);
+    }
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    fetchEvents();
+    if (user?.role === 'lecturer' || user?.role === 'admin') fetchCourses();
+  }, [fetchCourses, fetchEvents, user?.role]);
 
   const nextWeek = () => {
     const d = new Date(currentDate);

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { ArrowLeft, Plus, Trash2, CheckCircle, X, Clock, Award, Users, FileText, Settings, BarChart2 } from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
+import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 const AssignmentDetail = () => {
   const { id } = useParams();
@@ -14,6 +14,7 @@ const AssignmentDetail = () => {
   const [assignment, setAssignment] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // overview, questions, settings, stats
   
@@ -29,26 +30,26 @@ const AssignmentDetail = () => {
     question_order: 0
   });
 
-  useEffect(() => {
-    fetchAssignment();
-  }, [id]);
-
-  const fetchAssignment = async () => {
+  const fetchAssignment = useCallback(async () => {
     try {
       const res = await api.get(`/assignments/${id}`);
       setAssignment(res.data);
       
-      if (user.role === 'lecturer' || user.role === 'admin') {
+      if (user?.role === 'lecturer' || user?.role === 'admin') {
         const statsRes = await api.get(`/assignments/${id}/stats`);
         setStats(statsRes.data);
       }
     } catch (err) {
-      alert('Không thể tải bài tập');
-      navigate(-1);
+      console.error('Không thể tải bài tập', err);
+      setError(err.response?.data?.message || 'Không thể tải bài tập.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, user?.role]);
+
+  useEffect(() => {
+    fetchAssignment();
+  }, [fetchAssignment]);
 
   const openQModal = (q = null) => {
     if (q) {
@@ -88,18 +89,20 @@ const AssignmentDetail = () => {
       await api.delete(`/assignments/questions/${qId}`);
       fetchAssignment();
     } catch (err) {
+      console.error('Không thể xóa câu hỏi', err);
       alert('Lỗi xóa câu hỏi');
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /></div>;
+  if (loading) return <PageLoadingState label="Đang tải bài tập" />;
+  if (error) return <ErrorState title="Không thể tải bài tập" detail={error} onRetry={() => { setLoading(true); setError(''); fetchAssignment(); }} />;
   if (!assignment) return null;
 
   const isInstructor = user.role === 'lecturer' || user.role === 'admin';
   const isQuiz = assignment.type === 'quiz';
 
   return (
-    <div className="main-content">
+    <div className="main-content assignment-detail-page">
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1rem' }} onClick={() => navigate(-1)}>
         <ArrowLeft size={16} /> Quay lại
       </button>

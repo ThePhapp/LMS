@@ -1,28 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
 /* ===== CONFETTI ===== */
 const COLORS = ['#f59e0b', '#3b82f6', '#22c55e', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
-const randomBetween = (a, b) => a + Math.random() * (b - a);
+const seededFraction = (seed) => {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+};
+const seededBetween = (seed, a, b) => a + seededFraction(seed) * (b - a);
 
 export function Confetti({ active }) {
-  const [pieces, setPieces] = useState([]);
-
-  useEffect(() => {
-    if (!active) { setPieces([]); return; }
-    const newPieces = Array.from({ length: 60 }, (_, i) => ({
+  const pieces = active ? Array.from({ length: 60 }, (_, i) => ({
       id: i,
-      x: randomBetween(5, 95),
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      size: randomBetween(8, 16),
-      delay: randomBetween(0, 0.8),
-      duration: randomBetween(1.5, 3),
-      rotate: randomBetween(0, 360),
-      shape: Math.random() > 0.5 ? 'circle' : 'rect',
-    }));
-    setPieces(newPieces);
-    const t = setTimeout(() => setPieces([]), 3500);
-    return () => clearTimeout(t);
-  }, [active]);
+      x: seededBetween(i + 1, 5, 95),
+      color: COLORS[i % COLORS.length],
+      size: seededBetween(i + 101, 8, 16),
+      delay: seededBetween(i + 201, 0, 0.8),
+      duration: seededBetween(i + 301, 1.5, 3),
+      rotate: seededBetween(i + 401, 0, 360),
+      shape: i % 2 === 0 ? 'circle' : 'rect',
+    })) : [];
 
   if (!pieces.length) return null;
 
@@ -108,12 +104,13 @@ const MESSAGES_TRY = [
   'Học từ sai lầm là cách học giỏi nhất! 🧠',
 ];
 
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const pick = (items, seed) => items[Math.abs(seed) % items.length];
 
 export function MascotMessage({ score, total }) {
   const pct = total > 0 ? score / total : 0;
-  const mascot = MASCOTS[Math.floor(Math.random() * MASCOTS.length)];
-  const msg = pct >= 0.9 ? pick(MESSAGES_PERFECT) : pct >= 0.6 ? pick(MESSAGES_GOOD) : pick(MESSAGES_TRY);
+  const seed = Math.round(Number(score) * 31 + Number(total) * 17);
+  const mascot = MASCOTS[Math.abs(seed) % MASCOTS.length];
+  const msg = pct >= 0.9 ? pick(MESSAGES_PERFECT, seed) : pct >= 0.6 ? pick(MESSAGES_GOOD, seed) : pick(MESSAGES_TRY, seed);
   const bg = pct >= 0.9 ? 'linear-gradient(135deg,#fef9c3,#fde68a)' : pct >= 0.6 ? 'linear-gradient(135deg,#dbeafe,#bfdbfe)' : 'linear-gradient(135deg,#fce7f3,#fbcfe8)';
 
   return (
@@ -184,18 +181,6 @@ export function LessonCompleteToast({ show, onClose }) {
     </>
   );
 }
-
-/* ===== BOUNCY OPTION ANIMATION ===== */
-export const optionPickStyle = {
-  selected: {
-    transform: 'scale(1.02)',
-    transition: 'all 0.15s cubic-bezier(0.34,1.56,0.64,1)',
-  },
-  normal: {
-    transform: 'scale(1)',
-    transition: 'all 0.15s ease',
-  }
-};
 
 /* ===== FUN PROGRESS BAR ===== */
 export function FunProgressBar({ pct }) {

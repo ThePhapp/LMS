@@ -1,7 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { GraduationCap, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import { getRoleHomePath } from '../routing/access';
 
 const Login = () => {
   const { login } = useContext(AuthContext);
@@ -15,13 +16,14 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      const authenticatedUser = await login(email, password);
       // Chuyển hướng tới trang được yêu cầu hoặc dashboard
-      const from = location.state?.from || '/';
-      navigate(from);
+      const from = location.state?.from || getRoleHomePath(authenticatedUser.role);
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
     } finally {
@@ -32,43 +34,40 @@ const Login = () => {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-            <GraduationCap size={28} color="#fff" />
-          </div>
+        <header className="auth-header">
+          <img src="/vinh.svg" alt="" className="auth-logo" />
           <h1 className="auth-title">Chào mừng trở lại</h1>
           <p className="auth-subtitle">Đăng nhập để tiếp tục học</p>
-        </div>
+        </header>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={loading}>
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label" htmlFor="login-email">Email</label>
             <input id="login-email" type="email" className="form-input" value={email}
-              onChange={e => setEmail(e.target.value)} required placeholder="example@email.com" />
+              onChange={e => setEmail(e.target.value)} required autoComplete="email" inputMode="email" aria-invalid={!!error} />
           </div>
           <div className="form-group">
-            <label className="form-label">Mật khẩu</label>
-            <div style={{ position: 'relative' }}>
-              <input id="login-password" type={showPwd ? 'text' : 'password'} className="form-input"
+            <label className="form-label" htmlFor="login-password">Mật khẩu</label>
+            <div className="password-field">
+              <input id="login-password" type={showPwd ? 'text' : 'password'} className="form-input password-input"
                 value={password} onChange={e => setPassword(e.target.value)}
-                required placeholder="••••••••" style={{ paddingRight: '2.8rem' }} />
-              <button type="button" onClick={() => setShowPwd(!showPwd)}
-                style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>
-                {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                required autoComplete="current-password" aria-invalid={!!error} />
+              <button type="button" className="password-toggle" onClick={() => setShowPwd(!showPwd)} aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                {showPwd ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
               </button>
             </div>
           </div>
-          <button id="login-submit" type="submit" className="btn btn-primary btn-block btn-lg" style={{ marginTop: '0.5rem' }} disabled={loading}>
+          <button id="login-submit" type="submit" className="btn btn-primary btn-block btn-lg auth-submit" aria-disabled={loading} aria-busy={loading}>
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
 
         <hr className="divider" />
-        <p style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+        <p className="auth-footer-copy">
           Chưa có tài khoản?{' '}
-          <Link to="/register" style={{ fontWeight: 600 }}>Tạo tài khoản</Link>
+          <Link to="/register">Tạo tài khoản</Link>
         </p>
       </div>
     </div>

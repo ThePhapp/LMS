@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
-import { AuthContext } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, BookOpen, Users, GraduationCap, Star, Filter } from 'lucide-react';
+import { EmptyState, ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 const CATEGORIES = ['Tất cả', 'Toán', 'Tiếng Việt', 'Tiếng Anh', 'Đạo đức', 'Tự nhiên và Xã hội', 'Khoa học', 'Lịch sử và địa lý', 'Âm nhạc', 'Mỹ thuật'];
 const CATEGORIES_VAL = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'HistoryGeography', 'Music', 'Arts'];
@@ -14,7 +14,7 @@ const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 const CourseList = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useContext(AuthContext);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   
   // Filters
@@ -25,16 +25,22 @@ const CourseList = () => {
   const [showSidebarMobile, setShowSidebarMobile] = useState(false);
 
   useEffect(() => {
-    fetchCourses();
-  }, [search, category, level, priceFilter]);
-
-  const fetchCourses = () => {
-    setLoading(true);
+    let cancelled = false;
     api.get('/courses', { params: { search, category, level, priceFilter } })
-      .then(res => setCourses(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+      .then((res) => {
+        if (!cancelled) {
+          setCourses(res.data);
+          setError('');
+        }
+      })
+      .catch((requestError) => {
+        if (!cancelled) setError(requestError.response?.data?.message || 'Không thể tải danh sách khóa học.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [category, level, priceFilter, search]);
 
   const handleEnrollOrView = (courseId) => {
     navigate(`/courses/${courseId}`);
@@ -43,7 +49,7 @@ const CourseList = () => {
   return (
     <div className="main-content">
       {/* Header */}
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+      <div className="page-header catalog-header" style={{ marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title">Khóa học</h1>
           <p className="page-subtitle">Tìm kiếm và chọn lựa các khóa học phù hợp với bạn</p>
@@ -51,22 +57,23 @@ const CourseList = () => {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%', maxWidth: '400px' }}>
           <div className="search-bar" style={{ flex: 1, maxWidth: 'none' }}>
             <span className="search-bar-icon"><Search size={15} /></span>
-            <input 
+            <input
+              aria-label="Tìm kiếm khóa học"
               placeholder="Tìm kiếm khóa học..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
             />
           </div>
-          <button className="btn btn-secondary d-md-none" onClick={() => setShowSidebarMobile(!showSidebarMobile)} style={{ display: 'none' }}>
+          <button className="btn btn-secondary d-md-none" aria-expanded={showSidebarMobile} onClick={() => setShowSidebarMobile(!showSidebarMobile)}>
             <Filter size={18} />
           </button>
         </div>
       </div>
 
-      <div className="course-list-layout" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+      <div className="course-list-layout">
         {/* Sidebar Filters */}
-        <aside className={`course-sidebar ${showSidebarMobile ? 'show' : ''}`} style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '90px' }}>
-          <div className="card" style={{ padding: '1.5rem' }}>
+        <aside className={`course-sidebar ${showSidebarMobile ? 'show' : ''}`} aria-label="Bộ lọc khóa học">
+          <div className="card course-filter-card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Bộ lọc</h3>
             
             {/* Category Filter */}
@@ -118,17 +125,19 @@ const CourseList = () => {
         </aside>
 
         {/* Main Content: Courses Grid */}
-        <main className="course-main" style={{ flex: 1, minWidth: 0 }}>
+        <main className="course-main">
           {loading ? (
-            <div className="loading-wrapper"><div className="spinner"></div><p>Đang tải...</p></div>
+            <PageLoadingState label="Đang tải khóa học" />
+          ) : error ? (
+            <ErrorState title="Không thể tải khóa học" detail={error} onRetry={() => window.location.reload()} />
           ) : courses.length === 0 ? (
-            <div className="empty-state card" style={{ padding: '4rem' }}>
+            <EmptyState page action={<button type="button" className="btn btn-secondary" onClick={() => { setSearch(''); setCategory('All'); setLevel('All'); setPriceFilter('all'); }}>Xóa bộ lọc</button>}>
               <div className="empty-state-icon">🔍</div>
               <h3>Không tìm thấy khóa học</h3>
               <p>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
-            </div>
+            </EmptyState>
           ) : (
-            <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+            <div className="grid-cards catalog-grid">
               {courses.map(course => (
                 <div key={course.id} className="course-card" onClick={() => handleEnrollOrView(course.id)}>
                   <div className="course-card-thumb" style={{ height: '200px' }}>

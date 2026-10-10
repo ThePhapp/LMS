@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -14,15 +14,7 @@ const CourseStudents = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
-      navigate('/dashboard');
-      return;
-    }
-    fetchStudents();
-  }, [courseId, user]);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const res = await api.get(`/enrollments/course/${courseId}/students`);
       setData(res.data);
@@ -32,7 +24,15 @@ const CourseStudents = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, navigate]);
+
+  useEffect(() => {
+    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
+      navigate('/dashboard');
+      return;
+    }
+    fetchStudents();
+  }, [fetchStudents, navigate, user]);
 
   if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải...</p></div>;
   if (!data) return null;

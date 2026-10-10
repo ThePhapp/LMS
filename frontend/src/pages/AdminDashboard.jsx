@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, BookOpen, UserPlus, TrendingUp, Search, RefreshCw } from 'lucide-react';
-import { motion } from 'framer-motion';
-import api from '../services/api';
+import { motion as Motion } from 'framer-motion';
+import api, { assetUrl } from '../services/api';
+import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 const ROLE_CONFIG = {
   admin: { label: 'Admin', bg: '#FEE2E2', color: '#DC2626', border: '#FCA5A5' },
@@ -82,43 +83,17 @@ const AdminDashboard = () => {
   ];
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-        <div style={{ textAlign: 'center', color: '#64748B' }}>
-          <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-          <p style={{ fontSize: '0.9rem' }}>Đang tải dữ liệu...</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingState label="Đang tải dữ liệu quản trị" />;
   }
 
   if (error) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <div style={{
-          background: '#FEE2E2',
-          border: '1px solid #FCA5A5',
-          color: '#DC2626',
-          padding: '1rem 1.25rem',
-          borderRadius: 12,
-          borderLeft: '4px solid #EF4444',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <span>{error}</span>
-          <button onClick={fetchAdminData} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
-            <RefreshCw size={16} />
-          </button>
-        </div>
-      </div>
-    );
+    return <ErrorState title="Không thể tải dữ liệu quản trị" detail={error} onRetry={fetchAdminData} />;
   }
 
   return (
-    <div>
+    <div className="admin-page admin-dashboard-page">
       {/* Page Header */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div className="admin-page-header" style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 4 }}>
           Tổng quan hệ thống
         </h1>
@@ -128,14 +103,14 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stat Cards */}
-      <div style={{
+      <div className="admin-stat-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
         gap: '1.25rem',
         marginBottom: '2rem',
       }}>
         {statCards.map((card, i) => (
-          <motion.div
+          <Motion.div
             key={card.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -168,12 +143,13 @@ const AdminDashboard = () => {
             <div style={{ fontSize: card.isRate ? '2rem' : '2.25rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-1px', lineHeight: 1 }}>
               {card.value}
             </div>
-          </motion.div>
+          </Motion.div>
         ))}
       </div>
 
       {/* Users Table */}
-      <motion.div
+      <Motion.div
+        className="admin-table-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35, duration: 0.4 }}
@@ -329,7 +305,7 @@ const AdminDashboard = () => {
                           boxShadow: '0 2px 6px rgba(99,102,241,0.25)',
                         }}>
                           {u.avatar_url
-                            ? <img src={u.avatar_url} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ? <img src={assetUrl(u.avatar_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             : u.name.charAt(0).toUpperCase()
                           }
                         </div>
@@ -367,7 +343,7 @@ const AdminDashboard = () => {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </Motion.div>
     </div>
   );
 };

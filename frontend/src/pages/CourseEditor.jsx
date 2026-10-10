@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { FileEdit, List, DollarSign, CheckCircle, ArrowLeft, Upload, Plus, Trash2, X, Video, File, FileText, ClipboardList, Calendar, Copy, ChevronLeft, ChevronRight, Eye, Save, CheckCircle2, AlertCircle, GripVertical, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
+import { PageLoadingState } from '../components/ui/Feedback';
 
 const CATEGORIES = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'HistoryGeography', 'Music', 'Arts' ];
 const CATEGORY_LABELS = { All: 'Tất cả', Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên và Xã hội', Science: 'Khoa học', HistoryGeography: 'Lịch sử và địa lý', Music: 'Âm nhạc', Arts: 'Mỹ thuật'};
@@ -73,15 +74,7 @@ const CourseEditor = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  useEffect(() => {
-    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
-      navigate('/dashboard');
-      return;
-    }
-    if (isEdit) fetchCourse();
-  }, [id, user]);
-
-  const fetchCourse = async () => {
+  const fetchCourse = useCallback(async () => {
     try {
       const res = await api.get(`/courses/${id}`);
       const data = res.data;
@@ -95,7 +88,15 @@ const CourseEditor = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
+      navigate('/dashboard');
+      return;
+    }
+    if (isEdit) fetchCourse();
+  }, [fetchCourse, isEdit, navigate, user]);
 
   const handleSaveBasic = async (e) => {
     e.preventDefault();
@@ -170,7 +171,10 @@ const CourseEditor = () => {
     try {
       await api.delete(`/chapters/${chapId}`);
       fetchCourse();
-    } catch {}
+    } catch (error) {
+      console.error('Không thể xóa chương', error);
+      showToast('Lỗi xóa chương', 'error');
+    }
   };
 
   // Lesson Handlers
@@ -259,7 +263,10 @@ const CourseEditor = () => {
     try {
       await api.delete(`/lessons/${lessonId}`);
       fetchCourse();
-    } catch {}
+    } catch (error) {
+      console.error('Không thể xóa bài học', error);
+      showToast('Lỗi xóa bài học', 'error');
+    }
   };
 
   // Assignment Handlers
@@ -316,9 +323,7 @@ const CourseEditor = () => {
       };
 
       if (editingAssignment) {
-        // Note: Backend might not have PUT for assignments, we'll use POST/DELETE pattern
-        await api.delete(`/assignments/${editingAssignment.id}`);
-        await api.post(`/assignments/course/${id}`, payload);
+        await api.put(`/assignments/${editingAssignment.id}`, payload);
       } else {
         await api.post(`/assignments/course/${id}`, payload);
       }
@@ -337,7 +342,10 @@ const CourseEditor = () => {
     try {
       await api.delete(`/assignments/${assignmentId}`);
       fetchCourse();
-    } catch {}
+    } catch (error) {
+      console.error('Không thể xóa bài tập', error);
+      showToast('Lỗi xóa bài tập', 'error');
+    }
   };
 
   // Quiz Builder Handlers
@@ -345,7 +353,7 @@ const CourseEditor = () => {
     try {
       const res = await api.get(`/assignments/${assignment.id}`);
       setQuizBuilderAssignment(res.data);
-      const existingQs = (res.data.questions || []).map((q, i) => ({
+      const existingQs = (res.data.questions || []).map(q => ({
         id: q.id,
         question_text: q.question_text,
         options: q.options || ['', ''],
@@ -362,6 +370,7 @@ const CourseEditor = () => {
       setPreviewSubmitted(false);
       setShowQuizBuilder(true);
     } catch (err) {
+      console.error('Không thể tải quiz', err);
       showToast('Không thể tải quiz', 'error');
     }
   };
@@ -456,15 +465,15 @@ const CourseEditor = () => {
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /></div>;
+  if (loading) return <PageLoadingState label="Đang tải trình soạn thảo" />;
 
   return (
-    <div className="main-content">
+    <div className="main-content editor-page">
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }} onClick={() => navigate('/instructor/dashboard')}>
         <ArrowLeft size={16} /> Quay lại Dashboard
       </button>
 
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+      <div className="editor-layout" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
         
         {/* Sidebar Menu */}
         <div className="card" style={{ width: '240px', flexShrink: 0, padding: '1rem' }}>

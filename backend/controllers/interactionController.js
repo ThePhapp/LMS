@@ -1,88 +1,117 @@
 const db = require('../config/db');
+const {
+  CourseAccessError,
+  parseId,
+  requireCourseAccess,
+  requireLessonAccess,
+  sendControllerError,
+} = require('../services/courseAccess');
 
-// --- NOTES ---
+function requireText(value, label, maxLength) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new CourseAccessError(400, `${label} is required`);
+  }
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) {
+    throw new CourseAccessError(400, `${label} is too long`);
+  }
+  return trimmed;
+}
+
 exports.getNotes = async (req, res) => {
   try {
+    const lesson = await requireLessonAccess(db, req.params.lessonId, req.user);
     const [notes] = await db.query(
-      'SELECT * FROM notes WHERE user_id = ? AND lesson_id = ?',
-      [req.user.id, req.params.lessonId]
+      'SELECT id, content, updated_at FROM notes WHERE user_id = ? AND lesson_id = ?',
+      [req.user.id, lesson.id]
     );
-    res.json(notes[0] || { content: '' });
+    return res.json(notes[0] || { content: '' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
 exports.saveNote = async (req, res) => {
-  const { content } = req.body;
-  const lesson_id = req.params.lessonId;
-  const user_id = req.user.id;
   try {
+    const content = typeof req.body?.content === 'string' ? req.body.content : null;
+    if (content === null || content.length > 50000) {
+      throw new CourseAccessError(400, 'Content must be text with at most 50000 characters');
+    }
+    const lesson = await requireLessonAccess(db, req.params.lessonId, req.user);
     const [existing] = await db.query(
       'SELECT id FROM notes WHERE user_id = ? AND lesson_id = ?',
-      [user_id, lesson_id]
+      [req.user.id, lesson.id]
     );
 
-    if (existing.length > 0) {
-      await db.query('UPDATE notes SET content = ? WHERE id = ?', [content, existing[0].id]);
+    if (existing.length) {
+      await db.query(
+        'UPDATE notes SET content = ?, updated_at = NOW() WHERE id = ? AND user_id = ?',
+        [content, existing[0].id, req.user.id]
+      );
     } else {
-      await db.query('INSERT INTO notes (user_id, lesson_id, content) VALUES (?, ?, ?)', [user_id, lesson_id, content]);
+      await db.query(
+        'INSERT INTO notes (user_id, lesson_id, content) VALUES (?, ?, ?)',
+        [req.user.id, lesson.id, content]
+      );
     }
-    res.json({ message: 'Note saved' });
+    return res.json({ message: 'Note saved' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
-// --- COMMENTS ---
 exports.getComments = async (req, res) => {
   try {
+    const lesson = await requireLessonAccess(db, req.params.lessonId, req.user);
     const [comments] = await db.query(`
-      SELECT c.*, u.name as user_name, u.avatar_url 
+      SELECT c.*, u.name as user_name, u.avatar_url
       FROM comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.lesson_id = ?
       ORDER BY COALESCE(c.parent_id, c.id), c.created_at ASC
-    `, [req.params.lessonId]);
-    res.json(comments);
+    `, [lesson.id]);
+    return res.json(comments);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
 exports.addComment = async (req, res) => {
-  const { content, parent_id } = req.body;
-  const lesson_id = parseInt(req.params.lessonId, 10);
-  const user_id = req.user?.id;
-
-  if (!content) return res.status(400).json({ message: 'Content is required' });
-  if (!user_id) return res.status(401).json({ message: 'Not authenticated' });
-
   try {
-    const [result] = await db.query(
-      'INSERT INTO comments (user_id, lesson_id, content, parent_id) VALUES (?, ?, ?, ?) RETURNING id',
-      [user_id, lesson_id, content, parent_id || null]
-    );
+    const content = requireText(req.body?.content, 'Content', 10000);
+    const lesson = await requireLessonAccess(db, req.params.lessonId, req.user);
+    let parentId = null;
 
-    const [newComment] = await db.query(`
-      SELECT c.*, u.name as user_name, u.avatar_url 
+    if (req.body.parent_id !== undefined && req.body.parent_id !== null) {
+      parentId = parseId(req.body.parent_id, 'Parent comment ID');
+      const [parents] = await db.query(
+        'SELECT id FROM comments WHERE id = ? AND lesson_id = ?',
+        [parentId, lesson.id]
+      );
+      if (!parents.length) {
+        throw new CourseAccessError(400, 'Parent comment must belong to the same lesson');
+      }
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO comments (user_id, lesson_id, content, parent_id)
+       VALUES (?, ?, ?, ?) RETURNING id`,
+      [req.user.id, lesson.id, content, parentId]
+    );
+    const [newComments] = await db.query(`
+      SELECT c.*, u.name as user_name, u.avatar_url
       FROM comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.id = ?
     `, [result[0].id]);
-
-    res.status(201).json(newComment[0]);
+    return res.status(201).json(newComments[0]);
   } catch (error) {
-    console.error('[addComment error]', error.message, { user_id, lesson_id, content });
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
-// --- FORUM TOPICS ---
 exports.getForums = async (req, res) => {
   try {
-    // If course_id is provided, fetch for that course, otherwise fetch global topics
-    const course_id = req.query.course_id;
     let query = `
       SELECT f.*, u.name as author_name, c.title as course_title,
              (SELECT COUNT(*) FROM forum_replies WHERE topic_id = f.id) as reply_count
@@ -92,73 +121,95 @@ exports.getForums = async (req, res) => {
     `;
     const params = [];
 
-    if (course_id) {
+    if (req.query.course_id !== undefined) {
+      const courseId = parseId(req.query.course_id, 'Course ID');
+      await requireCourseAccess(db, courseId, req.user);
       query += ' WHERE f.course_id = ?';
-      params.push(course_id);
+      params.push(courseId);
     } else {
-      query += ' WHERE f.course_id IS NULL'; // Global forum
+      query += ' WHERE f.course_id IS NULL';
     }
-    
     query += ' ORDER BY f.created_at DESC';
 
     const [topics] = await db.query(query, params);
-    res.json(topics);
+    return res.json(topics);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
 exports.getForumById = async (req, res) => {
   try {
-    await db.query('UPDATE forum_topics SET views = views + 1 WHERE id = ?', [req.params.id]);
-
+    const topicId = parseId(req.params.id, 'Topic ID');
     const [topics] = await db.query(`
       SELECT f.*, u.name as author_name, c.title as course_title
       FROM forum_topics f
       JOIN users u ON f.user_id = u.id
       LEFT JOIN courses c ON f.course_id = c.id
       WHERE f.id = ?
-    `, [req.params.id]);
+    `, [topicId]);
+    if (!topics.length) throw new CourseAccessError(404, 'Topic not found');
+    const topic = topics[0];
 
-    if (topics.length === 0) return res.status(404).json({ message: 'Topic not found' });
+    if (topic.course_id) {
+      await requireCourseAccess(db, topic.course_id, req.user);
+    }
 
+    await db.query('UPDATE forum_topics SET views = views + 1 WHERE id = ?', [topicId]);
     const [replies] = await db.query(`
       SELECT r.*, u.name as reply_author, u.role as reply_role
       FROM forum_replies r
       JOIN users u ON r.user_id = u.id
       WHERE r.topic_id = ?
       ORDER BY r.created_at ASC
-    `, [req.params.id]);
-
-    res.json({ ...topics[0], replies });
+    `, [topicId]);
+    return res.json({ ...topic, views: Number(topic.views || 0) + 1, replies });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
 exports.createForum = async (req, res) => {
-  const { title, content, course_id } = req.body;
   try {
+    const title = requireText(req.body?.title, 'Title', 255);
+    const content = requireText(req.body?.content, 'Content', 50000);
+    let courseId = null;
+    if (req.body?.course_id !== undefined && req.body.course_id !== null && req.body.course_id !== '') {
+      courseId = parseId(req.body.course_id, 'Course ID');
+      await requireCourseAccess(db, courseId, req.user);
+    }
+
     const [result] = await db.query(
-      'INSERT INTO forum_topics (course_id, user_id, title, content) VALUES (?, ?, ?, ?) RETURNING id',
-      [course_id || null, req.user.id, title, content]
+      `INSERT INTO forum_topics (course_id, user_id, title, content)
+       VALUES (?, ?, ?, ?) RETURNING id`,
+      [courseId, req.user.id, title, content]
     );
-    res.status(201).json({ id: result[0].id });
+    return res.status(201).json({ id: result[0].id });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
-// --- FORUM REPLIES ---
 exports.replyForum = async (req, res) => {
-  const { content } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO forum_replies (topic_id, user_id, content) VALUES (?, ?, ?) RETURNING id',
-      [req.params.id, req.user.id, content]
+    const content = requireText(req.body?.content, 'Content', 10000);
+    const topicId = parseId(req.params.id, 'Topic ID');
+    const [topics] = await db.query(
+      'SELECT id, course_id FROM forum_topics WHERE id = ?',
+      [topicId]
     );
-    res.status(201).json({ id: result[0].id });
+    if (!topics.length) throw new CourseAccessError(404, 'Topic not found');
+    if (topics[0].course_id) {
+      await requireCourseAccess(db, topics[0].course_id, req.user);
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO forum_replies (topic_id, user_id, content)
+       VALUES (?, ?, ?) RETURNING id`,
+      [topicId, req.user.id, content]
+    );
+    return res.status(201).json({ id: result[0].id });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };

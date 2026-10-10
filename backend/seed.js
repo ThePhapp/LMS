@@ -1,71 +1,42 @@
-require('dotenv').config();
-const fs = require('fs');
+const dotenv = require('dotenv');
+const fs = require('fs/promises');
+const path = require('path');
 const { Pool } = require('pg');
 
-async function seedDatabase() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('localhost')
-      ? false
-      : { rejectUnauthorized: false },
-  });
+const { createPoolConfig } = require('./config/postgres');
 
+async function main() {
+  dotenv.config();
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Demo seed is disabled in production');
+  }
+  if (process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Set ALLOW_DEMO_SEED=true to acknowledge destructive demo seeding');
+  }
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+
+  const sql = await fs.readFile(path.join(__dirname, 'seed.sql'), 'utf8');
+  const pool = new Pool(createPoolConfig(process.env, { application_name: 'lms-demo-seed' }));
+  const client = await pool.connect();
   try {
-    console.log('Connected to PostgreSQL. Running seed...\n');
-    
-    // Read SQL file and split by INSERT INTO blocks
-    const sql = fs.readFileSync('seed.sql', 'utf8');
-    
-    // Split into individual statements (multi-line aware)
-    const statements = [];
-    let current = '';
-    const lines = sql.split('\n');
-    
-    for (const line of lines) {
-      // Skip comments and empty lines when not building a statement
-      if (!current && (line.trim().startsWith('--') || !line.trim())) continue;
-      
-      current += line + '\n';
-      
-      // End of statement (semicolon at end of line, not inside string)
-      if (line.trim().endsWith(';')) {
-        statements.push(current.trim());
-        current = '';
-      }
-    }
-    
-    console.log(`📝 Found ${statements.length} SQL statements\n`);
-    
-    let successCount = 0;
-    for (const stmt of statements) {
-      try {
-        // Show what we're inserting
-        const preview = stmt.split('\n')[0].substring(0, 60);
-        console.log(`▶ ${preview}...`);
-        
-        await pool.query(stmt);
-        successCount++;
-      } catch (err) {
-        console.error(`❌ Error: ${err.message}`);
-        // Don't stop on error, continue with next statement
-      }
-    }
-
-    console.log(`\n✅ Inserted ${successCount}/${statements.length} statements successfully!`);
-    console.log('\n📚 Demo accounts (password: 123456):');
-    console.log('   Giáo viên: mai.nguyen@school.edu.vn');
-    console.log('   Giáo viên: minh.tran@school.edu.vn');
-    console.log('   Giáo viên: huong.le@school.edu.vn');
-    console.log('   Học sinh: an@student.edu.vn');
-    console.log('   Học sinh: binh@student.edu.vn');
-    console.log('   Học sinh: chi@student.edu.vn');
-    console.log('   Admin: admin@school.edu.vn');
+    await client.query('BEGIN');
+    await client.query(sql);
+    await client.query('COMMIT');
+    console.log('Demo seed completed atomically');
   } catch (error) {
-    console.error('❌ Error seeding database:', error.message);
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
+    client.release();
     await pool.end();
-    process.exit();
   }
 }
 
-seedDatabase();
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`Demo seed failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { main };

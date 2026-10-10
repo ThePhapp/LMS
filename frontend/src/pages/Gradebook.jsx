@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
@@ -16,15 +16,7 @@ const Gradebook = () => {
   const [gradingSubId, setGradingSubId] = useState(null);
   const [gradeForm, setGradeForm] = useState({ score: '', feedback: '' });
 
-  useEffect(() => {
-    if (user?.role !== 'lecturer' && user?.role !== 'admin') {
-      navigate('/');
-      return;
-    }
-    fetchData();
-  }, [id, user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [courseRes, gradesRes] = await Promise.all([
         api.get(`/courses/${id}`),
@@ -38,7 +30,15 @@ const Gradebook = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (user?.role !== 'lecturer' && user?.role !== 'admin') {
+      navigate('/');
+      return;
+    }
+    fetchData();
+  }, [fetchData, navigate, user?.role]);
 
   const fetchSubmissions = async (assignmentId) => {
     try {

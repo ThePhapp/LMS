@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { FileArchive, ExternalLink, Maximize2, X } from 'lucide-react';
 import api, { assetUrl } from '../services/api';
+import { PageLoadingState } from './ui/Feedback';
 
 /**
  * PackageViewer - Display extracted web packages in iframe or redirect
@@ -16,15 +17,7 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (lessonId) {
-      fetchPackageInfo();
-    } else {
-      setLoading(false);
-    }
-  }, [lessonId]);
-
-  const fetchPackageInfo = async () => {
+  const fetchPackageInfo = useCallback(async () => {
     try {
       const response = await api.get(`/lessons/${lessonId}/package-info`);
       setPackageInfo(response.data);
@@ -35,17 +28,20 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [lessonId]);
+
+  useEffect(() => {
+    if (!lessonId) {
+      setLoading(false);
+      return undefined;
+    }
+    fetchPackageInfo();
+    const refreshTicket = setInterval(fetchPackageInfo, 25 * 60 * 1000);
+    return () => clearInterval(refreshTicket);
+  }, [fetchPackageInfo, lessonId]);
 
   if (loading) {
-    return (
-      <div className="package-loader" style={styles.loader}>
-        <div style={styles.spinnerContainer}>
-          <div style={styles.spinner}></div>
-          <p>Đang tải gói web...</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingState label="Đang tải gói web" />;
   }
 
   const rawUrl = packageInfo?.packageUrl || packageUrl;
@@ -53,7 +49,7 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
 
   if (error) {
     return (
-      <div style={styles.error}>
+      <div className="package-error error-state" style={styles.error} role="alert">
         <FileArchive size={32} color="#ff6b6b" />
         <p>Lỗi: {error}</p>
         {fullUrl && (
@@ -67,7 +63,7 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
   
   if (!fullUrl) {
     return (
-      <div style={styles.error}>
+      <div className="package-error error-state" style={styles.error}>
         <FileArchive size={32} color="#ffa94d" />
         <p>Không tìm thấy gói web</p>
       </div>
@@ -81,9 +77,11 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
         <div style={styles.fullscreenControls}>
           <span style={styles.fileName}>{fileName || 'Web Package'}</span>
           <button
+            type="button"
             onClick={() => setIsFullscreen(false)}
             style={styles.closeButton}
             title="Đóng toàn màn hình"
+            aria-label="Đóng toàn màn hình"
           >
             <X size={20} />
           </button>
@@ -110,9 +108,11 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
           </div>
           <div style={styles.packageActions}>
             <button
+              type="button"
               onClick={() => setIsFullscreen(true)}
               style={styles.iconButton}
               title="Toàn màn hình"
+              aria-label="Xem toàn màn hình"
             >
               <Maximize2 size={18} />
             </button>
@@ -122,6 +122,7 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
               rel="noopener noreferrer"
               style={styles.iconButton}
               title="Mở trong tab mới"
+              aria-label="Mở trong tab mới"
             >
               <ExternalLink size={18} />
             </a>

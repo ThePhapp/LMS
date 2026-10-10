@@ -11,22 +11,32 @@ const Forum = () => {
   const [newTopic, setNewTopic] = useState({ title: '', content: '' });
   const [replyContent, setReplyContent] = useState('');
 
-  useEffect(() => {
-    fetchTopics();
-  }, []);
-
   const fetchTopics = async () => {
     try {
       const res = await api.get('/interactions/forums');
       setTopics(res.data);
-    } catch { }
+    } catch (error) {
+      console.error('Failed to load forum topics', error);
+    }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/interactions/forums')
+      .then((res) => {
+        if (!cancelled) setTopics(res.data);
+      })
+      .catch((error) => console.error('Failed to load forum topics', error));
+    return () => { cancelled = true; };
+  }, []);
 
   const loadTopic = async (id) => {
     try {
       const res = await api.get(`/interactions/forums/${id}`);
       setActiveTopic(res.data);
-    } catch { }
+    } catch (error) {
+      console.error('Failed to load forum topic', error);
+    }
   };
 
   const handleCreateTopic = async (e) => {

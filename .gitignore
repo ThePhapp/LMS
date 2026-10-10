@@ -6,6 +6,9 @@ frontend/.env
 .node_modules/
 node_modules/
 **/node_modules/
+# Runtime uploads and extracted interactive packages
+backend/uploads/
+backend/public/packages/
 # Ignore build artifacts
 dist/
 build/
@@ -22,9 +25,7 @@ Thumbs.db
 coverage/
 # Ignore temporary files
 *.tmp
-# Ignore lock files
-package-lock.json
-yarn.lock
+# Dependency lockfiles are intentionally committed for reproducible installs.
 # Ignore test results
 test-results/
 # Ignore generated files

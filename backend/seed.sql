@@ -4,7 +4,7 @@
 -- Clear all existing data and reset sequences
 TRUNCATE users, courses, chapters, lessons, enrollments, lesson_progress, 
          notes, comments, forum_topics, forum_replies, assignments, 
-         assignment_questions, assignment_submissions, events CASCADE;
+         assignment_questions, assignment_submissions, events, notifications CASCADE;
 
 ALTER SEQUENCE users_id_seq RESTART WITH 1;
 ALTER SEQUENCE courses_id_seq RESTART WITH 1;
@@ -20,16 +20,17 @@ ALTER SEQUENCE assignments_id_seq RESTART WITH 1;
 ALTER SEQUENCE assignment_questions_id_seq RESTART WITH 1;
 ALTER SEQUENCE assignment_submissions_id_seq RESTART WITH 1;
 ALTER SEQUENCE events_id_seq RESTART WITH 1;
+ALTER SEQUENCE notifications_id_seq RESTART WITH 1;
 
--- Insert demo users (passwords are hashed version of "123456")
+-- Insert demo users (passwords are hashed version of "Demo123!")
 INSERT INTO users (name, email, password, role) VALUES
-('Cô Nguyễn Mai', 'mai.nguyen@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'lecturer'),
-('Thầy Trần Minh', 'minh.tran@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'lecturer'),
-('Cô Lê Hương', 'huong.le@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'lecturer'),
-('Bé An', 'an@student.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'student'),
-('Bé Bình', 'binh@student.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'student'),
-('Bé Chi', 'chi@student.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'student'),
-('Admin', 'admin@school.edu.vn', '$2b$10$7IawqaWG4akgaMQmlcm22OdXOL9XIa7YlKQeJpMiGN7WjSDltGSbm', 'admin');
+('Cô Nguyễn Mai', 'mai.nguyen@school.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'lecturer'),
+('Thầy Trần Minh', 'minh.tran@school.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'lecturer'),
+('Cô Lê Hương', 'huong.le@school.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'lecturer'),
+('Bé An', 'an@student.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'student'),
+('Bé Bình', 'binh@student.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'student'),
+('Bé Chi', 'chi@student.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'student'),
+('Admin', 'admin@school.edu.vn', '$2b$10$mH1HnD7HJ5N5B2zXQI5jJumN2dwLthrrB3897aOv9RQXT4Y53vYjq', 'admin');
 
 -- Insert courses
 INSERT INTO courses (title, description, category, lecturer_id, price, level) VALUES
