@@ -148,6 +148,8 @@ test('an enrolled student receives full curriculum', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.has_full_access, true);
   assert.equal(res.body.lessons[0].content, 'Protected body');
+  assert.equal(res.body.lessons[0].file_url, '/api/files/lessons/7/access');
+  assert.doesNotMatch(JSON.stringify(res.body), /https:\/\/private\.example\/file/);
   assert.equal(res.body.chapters[0].lessons[0].id, 7);
   assert.match(calls.at(-1), /status = 'published'/);
 });

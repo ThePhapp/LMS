@@ -54,6 +54,7 @@ const CourseLearning = () => {
   const [showCompleteToast, setShowCompleteToast] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSidebar, setShowSidebar] = useState(window.innerWidth > 1024);
+  const [lessonFileAccess, setLessonFileAccess] = useState(null);
 
   useEffect(() => {
     fetchCourseAndProgress();
@@ -71,6 +72,31 @@ const CourseLearning = () => {
       }
     }
   }, [activeLesson?.id, activeLesson?.item_type]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLessonFileAccess(null);
+    if (!activeLesson?.id || activeLesson.item_type === 'assignment'
+        || activeLesson.file_type === 'package' || !activeLesson.file_url) {
+      return () => { cancelled = true; };
+    }
+
+    const accessPath = (activeLesson.file_access_url || `/api/files/lessons/${activeLesson.id}/access`)
+      .replace(/^\/api/, '');
+    api.get(accessPath).then((response) => {
+      if (!cancelled) {
+        setLessonFileAccess({
+          ...response.data,
+          url: assetUrl(response.data.url),
+          downloadUrl: assetUrl(response.data.downloadUrl),
+        });
+      }
+    }).catch(() => {
+      if (!cancelled) setLessonFileAccess({ error: true });
+    });
+
+    return () => { cancelled = true; };
+  }, [activeLesson?.id, activeLesson?.item_type, activeLesson?.file_type, activeLesson?.file_url, activeLesson?.file_access_url]);
 
   const fetchFullAssignment = async (assignmentId) => {
     try {
@@ -236,7 +262,7 @@ const CourseLearning = () => {
                   {!ytId && activeLesson.file_type === 'video' && activeLesson.file_url && (
                     <div className="video-embed" style={{ boxShadow: 'var(--shadow-lg)', borderRadius: '16px' }}>
                       <video controls style={{ width: '100%', height: '100%' }}>
-                        <source src={assetUrl(activeLesson.file_url)} />
+                        <source src={lessonFileAccess?.url || ''} />
                       </video>
                     </div>
                   )}
@@ -270,7 +296,7 @@ const CourseLearning = () => {
                             <div style={{ fontWeight: 600, fontSize: '1rem' }}>
                               📄 {activeLesson.file_name || 'Tài liệu PDF'}
                             </div>
-                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
+                            <a href={lessonFileAccess?.downloadUrl || '#'} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
                               <Download size={13} /> Tải xuống
                             </a>
                           </div>
@@ -283,17 +309,17 @@ const CourseLearning = () => {
                             boxShadow: 'var(--shadow-lg)'
                           }}>
                             <iframe 
-                              src={`${assetUrl(activeLesson.file_url)}#view=FitH`}
+                              src={lessonFileAccess?.url ? `${lessonFileAccess.url}#view=FitH` : undefined}
                               style={{ width: '100%', height: '100%', border: 'none' }}
                               title="PDF Viewer"
                             />
                           </div>
                         </div>
-                      ) : (['pptx','ppt','docx','doc','xlsx','xls'].includes(activeLesson.file_type) || /\.(pptx?|docx?|xlsx?)$/i.test(activeLesson.file_url)) ? (() => {
-                        const fullUrl = assetUrl(activeLesson.file_url);
+                      ) : (['pptx','ppt','docx','doc','xlsx','xls'].includes(activeLesson.file_type) || /\.(pptx?|docx?|xlsx?)$/i.test(activeLesson.file_name || '')) ? (() => {
+                        const fullUrl = lessonFileAccess?.url || '';
                         const isLocal = fullUrl.includes('localhost') || fullUrl.includes('127.0.0.1');
-                        const isPpt = ['pptx','ppt'].includes(activeLesson.file_type) || /\.pptx?$/i.test(activeLesson.file_url);
-                        const isDoc = ['docx','doc'].includes(activeLesson.file_type) || /\.docx?$/i.test(activeLesson.file_url);
+                        const isPpt = ['pptx','ppt'].includes(activeLesson.file_type) || /\.pptx?$/i.test(activeLesson.file_name || '');
+                        const isDoc = ['docx','doc'].includes(activeLesson.file_type) || /\.docx?$/i.test(activeLesson.file_name || '');
                         const icon = isPpt ? '📊' : isDoc ? '📝' : '📈';
                         const label = isPpt ? 'Bài trình chiếu' : isDoc ? 'Tài liệu Word' : 'Bảng tính Excel';
                         const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
@@ -342,7 +368,7 @@ const CourseLearning = () => {
                           <div className="doc-icon" style={{ background: '#EDE9FE' }}>📝</div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, marginBottom: 4 }}>{activeLesson.file_name || 'Tài liệu'}</div>
-                            <a href={assetUrl(activeLesson.file_url)} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
+                            <a href={lessonFileAccess?.downloadUrl || '#'} download className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
                               <Download size={13} /> Tải xuống
                             </a>
                           </div>

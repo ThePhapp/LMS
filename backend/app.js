@@ -1,4 +1,3 @@
-const path = require('path');
 const cors = require('cors');
 const express = require('express');
 
@@ -18,6 +17,7 @@ function loadDefaultRoutes() {
     ['/api/events', require('./routes/events')],
     ['/api/admin', require('./routes/admin')],
     ['/api/ai', require('./routes/ai')],
+    ['/api/files', require('./routes/files')],
   ];
 }
 
@@ -37,45 +37,13 @@ function corsOptions(allowedOrigins) {
   };
 }
 
-function mountStaticAssets(app, config) {
-  app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-    fallthrough: true,
-    setHeaders(res, filePath) {
-      const mimeMap = {
-        '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        '.ppt': 'application/vnd.ms-powerpoint',
-        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.doc': 'application/msword',
-        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        '.xls': 'application/vnd.ms-excel',
-      };
-      const mimeType = mimeMap[path.extname(filePath).toLowerCase()];
-      if (mimeType) res.setHeader('Content-Type', mimeType);
-    },
-  }));
-
-  const frameAncestors = ["'self'", ...config.allowedOrigins].join(' ');
-  app.use('/packages', express.static(path.join(__dirname, 'public/packages'), {
-    fallthrough: true,
-    setHeaders(res, filePath) {
-      res.removeHeader('X-Frame-Options');
-      res.setHeader('Content-Security-Policy', `frame-ancestors ${frameAncestors}`);
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-
-      const packageMimeMap = {
-        '.xml': 'application/xml',
-        '.xsd': 'application/xml',
-        '.dtd': 'application/xml-dtd',
-        '.js': 'application/javascript',
-        '.json': 'application/json',
-      };
-      const mimeType = packageMimeMap[path.extname(filePath).toLowerCase()];
-      if (mimeType) res.setHeader('Content-Type', mimeType);
-    },
-  }));
-}
-
 function normalizeError(error) {
+  if (error?.code === 'LIMIT_FILE_SIZE') {
+    return { status: 413, code: 'FILE_TOO_LARGE', message: 'Uploaded file is too large' };
+  }
+  if (error?.name === 'MulterError') {
+    return { status: 400, code: error.code || 'UPLOAD_INVALID', message: 'File upload is invalid' };
+  }
   if (error?.type === 'entity.too.large') {
     return { status: 413, code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' };
   }
@@ -109,19 +77,24 @@ function createApp(options = {}) {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  if (options.serveStatic !== false) mountStaticAssets(app, config);
-
   const apiLimiter = createRateLimiter({
     ...config.apiRateLimit,
     message: 'Too many API requests; please retry later',
+    skip: (req) => req.path.startsWith('/files/packages/'),
   });
   const authLimiter = createRateLimiter({
     ...config.authRateLimit,
     code: 'AUTH_RATE_LIMITED',
     message: 'Too many authentication attempts; please retry later',
   });
+  const packageLimiter = createRateLimiter({
+    ...config.fileRateLimit,
+    code: 'FILE_RATE_LIMITED',
+    message: 'Too many file requests; please retry later',
+  });
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
+  app.use('/api/files/packages', packageLimiter);
   app.use('/api', apiLimiter);
 
   const routes = options.routes || (options.mountDefaultRoutes === false ? [] : loadDefaultRoutes());

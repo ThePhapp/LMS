@@ -1,4 +1,12 @@
 const db = require('../config/db');
+const path = require('path');
+const { randomUUID } = require('crypto');
+const {
+  deleteStoredFile,
+  deleteStoragePrefix,
+  packagePrefixFromLocator,
+  uploadToStorage,
+} = require('../config/storage');
 const {
   CourseAccessError,
   hasCourseAccess,
@@ -25,6 +33,25 @@ function priceField(value, fallback = 0) {
     throw new CourseAccessError(400, 'Price must be a valid non-negative amount');
   }
   return price;
+}
+
+function exposeLessonFile(lesson) {
+  if (!lesson.file_url) return lesson;
+  if (lesson.file_type === 'package') {
+    return {
+      ...lesson,
+      file_url: `/api/lessons/${lesson.id}/package-info`,
+      package_url: `/api/lessons/${lesson.id}/package-info`,
+      has_file: true,
+    };
+  }
+  const accessUrl = `/api/files/lessons/${lesson.id}/access`;
+  return {
+    ...lesson,
+    file_url: accessUrl,
+    file_access_url: accessUrl,
+    has_file: true,
+  };
 }
 
 exports.getCourses = async (req, res) => {
@@ -97,13 +124,14 @@ exports.getCourseById = async (req, res) => {
        ORDER BY chapter_order ASC, id ASC`,
       [course.id]
     );
-    const [lessons] = await db.query(
+    const [lessonRows] = await db.query(
       `SELECT id, course_id, chapter_id, title, content, video_url, file_url,
               file_name, file_type, lesson_order, duration, created_at
        FROM lessons WHERE course_id = ?
        ORDER BY lesson_order ASC, id ASC`,
       [course.id]
     );
+    const lessons = lessonRows.map(exposeLessonFile);
     let assignmentQuery =
       `SELECT id, course_id, chapter_id, title, description, type,
               total_points, due_date
@@ -142,6 +170,7 @@ exports.getCourseById = async (req, res) => {
 };
 
 exports.createCourse = async (req, res) => {
+  let uploadedThumbnail = null;
   try {
     const body = req.body || {};
     const title = textField(body.title, 'Title', 255, { required: true });
@@ -151,15 +180,14 @@ exports.createCourse = async (req, res) => {
     const price = priceField(body.price);
     let thumbnailUrl = null;
     if (req.file) {
-      const { uploadToStorage } = require('../config/storage');
-      const path = require('path');
       const ext = path.extname(req.file.originalname).toLowerCase();
-      thumbnailUrl = await uploadToStorage(
+      uploadedThumbnail = await uploadToStorage(
         req.file.buffer,
-        'avatars',
-        `thumb-${Date.now()}${ext}`,
-        req.file.mimetype
+        'course-thumbnails',
+        `thumb-${randomUUID()}${ext}`,
+        req.file.detectedMime,
       );
+      thumbnailUrl = uploadedThumbnail;
     }
 
     const [result] = await db.query(
@@ -179,11 +207,13 @@ exports.createCourse = async (req, res) => {
       level,
     });
   } catch (error) {
+    if (uploadedThumbnail) await deleteStoredFile(uploadedThumbnail).catch(() => {});
     return sendControllerError(res, error);
   }
 };
 
 exports.updateCourse = async (req, res) => {
+  let uploadedThumbnail = null;
   try {
     const course = await requireCourseOwner(db, req.params.id, req.user);
     const body = req.body || {};
@@ -202,15 +232,14 @@ exports.updateCourse = async (req, res) => {
     const price = priceField(body.price, course.price);
     let thumbnailUrl = course.thumbnail_url;
     if (req.file) {
-      const { uploadToStorage } = require('../config/storage');
-      const path = require('path');
       const ext = path.extname(req.file.originalname).toLowerCase();
-      thumbnailUrl = await uploadToStorage(
+      uploadedThumbnail = await uploadToStorage(
         req.file.buffer,
-        'avatars',
-        `thumb-${Date.now()}${ext}`,
-        req.file.mimetype
+        'course-thumbnails',
+        `thumb-${randomUUID()}${ext}`,
+        req.file.detectedMime,
       );
+      thumbnailUrl = uploadedThumbnail;
     }
 
     await db.query(
@@ -227,6 +256,11 @@ exports.updateCourse = async (req, res) => {
         course.id,
       ]
     );
+    if (uploadedThumbnail && course.thumbnail_url) {
+      await deleteStoredFile(course.thumbnail_url).catch(() => {
+        console.error('Unable to clean up replaced course thumbnail');
+      });
+    }
     return res.json({
       message: 'Course updated',
       id: course.id,
@@ -238,6 +272,7 @@ exports.updateCourse = async (req, res) => {
       level,
     });
   } catch (error) {
+    if (uploadedThumbnail) await deleteStoredFile(uploadedThumbnail).catch(() => {});
     return sendControllerError(res, error);
   }
 };
@@ -245,7 +280,36 @@ exports.updateCourse = async (req, res) => {
 exports.deleteCourse = async (req, res) => {
   try {
     const course = await requireCourseOwner(db, req.params.id, req.user);
+    const [lessonFiles] = await db.query(
+      'SELECT file_url, file_type FROM lessons WHERE course_id = ? AND file_url IS NOT NULL',
+      [course.id],
+    );
+    const [submissionFiles] = await db.query(
+      `SELECT s.file_url FROM assignment_submissions s
+       JOIN assignments a ON a.id = s.assignment_id
+       WHERE a.course_id = ? AND s.file_url IS NOT NULL`,
+      [course.id],
+    );
     await db.query('DELETE FROM courses WHERE id = ?', [course.id]);
+    const cleanupOperations = [];
+    if (course.thumbnail_url) cleanupOperations.push(deleteStoredFile(course.thumbnail_url));
+    for (const file of submissionFiles) cleanupOperations.push(deleteStoredFile(file.file_url));
+    for (const file of lessonFiles) {
+      if (file.file_type === 'package') {
+        const prefix = packagePrefixFromLocator(file.file_url);
+        if (prefix) {
+          cleanupOperations.push(deleteStoragePrefix(prefix, {
+            privateBucket: file.file_url.startsWith('r2://'),
+          }));
+        }
+      } else {
+        cleanupOperations.push(deleteStoredFile(file.file_url));
+      }
+    }
+    const cleanupResults = await Promise.allSettled(cleanupOperations);
+    if (cleanupResults.some((result) => result.status === 'rejected')) {
+      console.error('Unable to clean up one or more deleted course files');
+    }
     return res.json({ message: 'Course deleted' });
   } catch (error) {
     return sendControllerError(res, error);

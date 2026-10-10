@@ -2,11 +2,12 @@ function clientKey(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
-function createRateLimiter({ windowMs, max, code = 'RATE_LIMITED', message = 'Too many requests' }) {
+function createRateLimiter({ windowMs, max, code = 'RATE_LIMITED', message = 'Too many requests', skip }) {
   const entries = new Map();
   const maxEntries = 10_000;
 
   return (req, res, next) => {
+    if (typeof skip === 'function' && skip(req)) return next();
     const now = Date.now();
     const key = clientKey(req);
     let entry = entries.get(key);

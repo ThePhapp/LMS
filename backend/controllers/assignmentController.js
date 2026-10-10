@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { deleteStoredFile } = require('../config/storage');
 const {
   HttpError,
   badRequest,
@@ -28,6 +29,16 @@ function parseJson(value) {
   } catch (_) {
     return value;
   }
+}
+
+function serializeSubmission(submission) {
+  const hasFile = Boolean(submission.file_url);
+  return {
+    ...submission,
+    file_url: hasFile ? `/api/files/submissions/${submission.id}/access` : null,
+    file_access_url: hasFile ? `/api/files/submissions/${submission.id}/access` : null,
+    has_file: hasFile,
+  };
 }
 
 function positiveInteger(value, fieldName) {
@@ -309,7 +320,7 @@ exports.getAssignmentById = async (req, res) => {
 
       if (submissions.length > 0) {
         assignment.my_submissions = submissions.map(submission => ({
-          ...submission,
+          ...serializeSubmission(submission),
           answers: parseJson(submission.answers),
         }));
         assignment.my_submission = assignment.my_submissions[0];
@@ -361,7 +372,12 @@ exports.deleteAssignment = async (req, res) => {
   try {
     const assignment = await resolveAssignment(db, req.params.id);
     requireOwnerOrAdmin(req.user, assignment);
+    const [submissionFiles] = await db.query(
+      'SELECT file_url FROM assignment_submissions WHERE assignment_id = ? AND file_url IS NOT NULL',
+      [assignment.id],
+    );
     await db.query('DELETE FROM assignments WHERE id = ?', [assignment.id]);
+    await Promise.allSettled(submissionFiles.map((submission) => deleteStoredFile(submission.file_url)));
     return res.json({ message: 'Assignment deleted' });
   } catch (error) {
     return handleError(error, res);
@@ -455,6 +471,7 @@ exports.deleteQuestion = async (req, res) => {
 
 exports.submitAssignment = async (req, res) => {
   const body = req.body || {};
+  let submissionSaved = false;
   try {
     const result = await db.withTransaction(async transaction => {
       const assignment = await resolveAssignment(transaction, req.params.id, { lock: 'share' });
@@ -481,6 +498,7 @@ exports.submitAssignment = async (req, res) => {
 
       const attemptNumber = attemptCount + 1;
       if (assignment.type === 'quiz') {
+        if (req.file) badRequest('File uploads are only supported for essay assignments');
         if (!body.answers || typeof body.answers !== 'object' || Array.isArray(body.answers)) {
           badRequest('answers must be an object');
         }
@@ -558,7 +576,7 @@ exports.submitAssignment = async (req, res) => {
       }
 
       const content = optionalText(body.content, 'content', 100_000);
-      const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
+      const fileUrl = req.file?.storageLocator || null;
       if (!content && !fileUrl) badRequest('Essay content or a file is required');
       await transaction.query(
         `INSERT INTO assignment_submissions (assignment_id, student_id, content, file_url, status, attempt_number)
@@ -573,6 +591,7 @@ exports.submitAssignment = async (req, res) => {
         },
       };
     });
+    submissionSaved = true;
 
     try {
       const [students] = await db.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
@@ -590,6 +609,9 @@ exports.submitAssignment = async (req, res) => {
 
     return res.status(201).json(result.response);
   } catch (error) {
+    if (!submissionSaved && req.file?.storageLocator) {
+      await deleteStoredFile(req.file.storageLocator).catch(() => {});
+    }
     return handleError(error, res);
   }
 };
@@ -606,7 +628,7 @@ exports.getSubmissions = async (req, res) => {
        ORDER BY s.submitted_at DESC`,
       [assignment.id]
     );
-    return res.json(submissions);
+    return res.json(submissions.map(serializeSubmission));
   } catch (error) {
     return handleError(error, res);
   }
@@ -622,7 +644,7 @@ exports.getMySubmissions = async (req, res) => {
       [assignment.id, req.user.id]
     );
     return res.json(submissions.map(submission => ({
-      ...submission,
+      ...serializeSubmission(submission),
       answers: parseJson(submission.answers),
     })));
   } catch (error) {

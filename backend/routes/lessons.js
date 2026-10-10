@@ -8,6 +8,7 @@ const { Transform, pipeline } = require('stream');
 const { createLesson, updateLesson, deleteLesson, markProgress, getProgressForCourse, getPackageInfo } = require('../controllers/lessonController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { ZIP_LIMITS } = require('../utils/zipHandler');
+const { CONTEXT_EXTENSIONS, validateUploadedFile } = require('../utils/fileValidation');
 
 const tempUploadDir = path.join(__dirname, '../uploads/tmp');
 fs.mkdirSync(tempUploadDir, { recursive: true });
@@ -89,14 +90,13 @@ const upload = multer({
   storage,
   limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB for video/packages
   fileFilter(req, file, cb) {
-    const allowed = [
-      '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xlsx', '.xls',
-      '.mp4', '.webm', '.mov', '.avi', '.mkv', '.mp3', '.wav',
-      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
-      '.zip' // Web package export
-    ];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (!allowed.includes(ext)) return cb(new Error('File type not allowed'));
+    if (!CONTEXT_EXTENSIONS.lesson.has(ext)) {
+      const error = new Error('File type not allowed');
+      error.code = 'FILE_TYPE_NOT_ALLOWED';
+      error.statusCode = 415;
+      return cb(error);
+    }
     cb(null, true);
   }
 });
@@ -121,6 +121,19 @@ function handleUpload(req, res, next) {
           code: 'ZIP_TOO_LARGE',
           message: 'ZIP upload exceeds the 100 MiB limit'
         });
+      }
+      if (req.file) {
+        try {
+          const validated = await validateUploadedFile(req.file.path, req.file.originalname, 'lesson');
+          req.file.detectedMime = validated.mimeType;
+        } catch (validationError) {
+          await fs.promises.unlink(req.file.path).catch(() => {});
+          req.file = undefined;
+          return res.status(validationError.statusCode || 415).json({
+            code: validationError.code || 'FILE_INVALID',
+            message: validationError.message || 'File validation failed',
+          });
+        }
       }
       return next();
     }

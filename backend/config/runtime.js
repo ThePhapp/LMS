@@ -34,6 +34,10 @@ function getRuntimeConfig(env = process.env) {
       windowMs: parsePositiveInteger(env.API_RATE_LIMIT_WINDOW_MS, 5 * 60_000, { min: 1_000 }),
       max: parsePositiveInteger(env.API_RATE_LIMIT_MAX, 300, { max: 100_000 }),
     },
+    fileRateLimit: {
+      windowMs: parsePositiveInteger(env.FILE_RATE_LIMIT_WINDOW_MS, 5 * 60_000, { min: 1_000 }),
+      max: parsePositiveInteger(env.FILE_RATE_LIMIT_MAX, 3_000, { max: 100_000 }),
+    },
     authRateLimit: {
       windowMs: parsePositiveInteger(env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60_000, { min: 1_000 }),
       max: parsePositiveInteger(env.AUTH_RATE_LIMIT_MAX, 20, { max: 10_000 }),
@@ -44,7 +48,17 @@ function getRuntimeConfig(env = process.env) {
 function validateRuntimeConfig(env = process.env) {
   if ((env.NODE_ENV || 'development') !== 'production') return;
 
-  const missing = ['DATABASE_URL', 'JWT_SECRET', 'ALLOWED_ORIGINS']
+  const missing = [
+    'DATABASE_URL',
+    'JWT_SECRET',
+    'ALLOWED_ORIGINS',
+    'R2_ACCOUNT_ID',
+    'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY',
+    'R2_BUCKET_NAME',
+    'R2_PRIVATE_BUCKET_NAME',
+    'R2_PUBLIC_URL',
+  ]
     .filter((name) => !env[name]?.trim());
 
   if (missing.length) {

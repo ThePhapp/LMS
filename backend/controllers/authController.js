@@ -1,6 +1,9 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const { randomUUID } = require('crypto');
+const { deleteStoredFile, uploadToStorage } = require('../config/storage');
 
 const DEFAULT_JWT_ISSUER = 'lms-api';
 const DEFAULT_JWT_AUDIENCE = 'lms-client';
@@ -135,19 +138,11 @@ exports.updateProfile = async (req, res) => {
     return res.status(400).json({ message: 'New password must be at least 8 characters and at most 72 bytes' });
   }
 
+  let uploadedAvatar = null;
   try {
     const [users] = await db.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
     if (users.length === 0) return res.status(404).json({ message: 'User not found' });
     const user = users[0];
-
-    // Handle avatar upload
-    let avatar_url = user.avatar_url;
-    if (req.file) {
-      const { uploadToStorage } = require('../config/storage');
-      const path = require('path');
-      const ext = path.extname(req.file.originalname).toLowerCase();
-      avatar_url = await uploadToStorage(req.file.buffer, 'avatars', `avatar-${Date.now()}${ext}`, req.file.mimetype);
-    }
 
     // Handle password change
     let hashedPassword = user.password;
@@ -159,10 +154,28 @@ exports.updateProfile = async (req, res) => {
       hashedPassword = await bcrypt.hash(newPassword, salt);
     }
 
+    let avatar_url = user.avatar_url;
+    if (req.file) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      uploadedAvatar = await uploadToStorage(
+        req.file.buffer,
+        'avatars',
+        `avatar-${randomUUID()}${ext}`,
+        req.file.detectedMime,
+      );
+      avatar_url = uploadedAvatar;
+    }
+
     await db.query(
       'UPDATE users SET name=?, password=?, avatar_url=? WHERE id=?',
       [normalizedName || user.name, hashedPassword, avatar_url, req.user.id]
     );
+
+    if (uploadedAvatar && user.avatar_url) {
+      await deleteStoredFile(user.avatar_url).catch(() => {
+        console.error('Unable to clean up replaced avatar');
+      });
+    }
 
     res.json({
       id: user.id,
@@ -173,6 +186,7 @@ exports.updateProfile = async (req, res) => {
       token: req.user.token // keep same token
     });
   } catch (error) {
+    if (uploadedAvatar) await deleteStoredFile(uploadedAvatar).catch(() => {});
     console.error('Profile update failed');
     res.status(500).json({ message: 'Unable to update profile' });
   }

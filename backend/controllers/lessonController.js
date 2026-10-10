@@ -3,10 +3,15 @@ const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs').promises;
 const {
-  uploadFileToStorage,
+  uploadPrivateFileToStorage,
   uploadDirectoryToStorage,
+  deleteStoredFile,
+  deleteStoragePrefix,
   deleteStorageKeys,
+  packageEntryPath,
+  packagePrefixFromLocator,
 } = require('../config/storage');
+const { issueFileTicket, PACKAGE_COOKIE_NAME } = require('../services/fileTickets');
 const { extractPackageFromFile, cleanupPackage } = require('../utils/zipHandler');
 const {
   CourseAccessError,
@@ -66,6 +71,23 @@ function getLegacyLocalPackagePath(fileUrl) {
   return packagePath;
 }
 
+async function cleanupLessonAsset(lesson) {
+  if (!lesson?.file_url) return;
+  if (lesson.file_type === 'package') {
+    const localPackagePath = getLegacyLocalPackagePath(lesson.file_url);
+    if (localPackagePath) {
+      await cleanupPackage(localPackagePath);
+      return;
+    }
+    const prefix = packagePrefixFromLocator(lesson.file_url);
+    if (prefix) {
+      await deleteStoragePrefix(prefix, { privateBucket: lesson.file_url.startsWith('r2://') });
+    }
+    return;
+  }
+  await deleteStoredFile(lesson.file_url);
+}
+
 async function validateChapterForCourse(chapterId, courseId) {
   if (chapterId === undefined || chapterId === null || chapterId === '') return null;
   const numericChapterId = Number(chapterId);
@@ -110,7 +132,7 @@ async function processPackageUpload(uploadedFile) {
   }
 
   if (operationError) {
-    if (uploadedPackage?.keys) await deleteStorageKeys(uploadedPackage.keys);
+    if (uploadedPackage?.keys) await deleteStorageKeys(uploadedPackage.keys, { privateBucket: true });
     throw operationError;
   }
 
@@ -120,6 +142,7 @@ async function processPackageUpload(uploadedFile) {
 exports.createLesson = async (req, res) => {
   let file_url = null, file_name = null, file_type = null;
   let packageUpload = null;
+  let regularUploadLocator = null;
 
   try {
     const body = req.body || {};
@@ -144,8 +167,14 @@ exports.createLesson = async (req, res) => {
         file_url = packageUpload.indexUrl;
       } else {
         // Handle regular files
-        const storageName = `lesson-${Date.now()}${ext}`;
-        file_url = await uploadFileToStorage(req.file.path, 'lesson-files', storageName, req.file.mimetype);
+        const storageName = `lesson-${randomUUID()}${ext}`;
+        regularUploadLocator = await uploadPrivateFileToStorage(
+          req.file.path,
+          'lesson-files',
+          storageName,
+          req.file.detectedMime,
+        );
+        file_url = regularUploadLocator;
         file_name = originalName;
         file_type = getFileType(originalName);
       }
@@ -157,11 +186,15 @@ exports.createLesson = async (req, res) => {
     );
 
     res.status(201).json({
-      id: result[0].id, course_id: courseId, chapter_id: validatedChapterId, title, content, video_url, file_url, file_name, file_type,
-      lesson_order: lesson_order || 0, duration, package_url: file_type === 'package' ? file_url : null
+      id: result[0].id, course_id: courseId, chapter_id: validatedChapterId, title, content, video_url,
+      file_url: file_url ? (file_type === 'package' ? `/api/lessons/${result[0].id}/package-info` : `/api/files/lessons/${result[0].id}/access`) : null,
+      file_access_url: file_url && file_type !== 'package' ? `/api/files/lessons/${result[0].id}/access` : null,
+      file_name, file_type, lesson_order: lesson_order || 0, duration,
+      package_url: file_type === 'package' ? `/api/lessons/${result[0].id}/package-info` : null
     });
   } catch (error) {
-    if (packageUpload?.keys) await deleteStorageKeys(packageUpload.keys);
+    if (packageUpload?.keys) await deleteStorageKeys(packageUpload.keys, { privateBucket: true });
+    if (regularUploadLocator) await deleteStoredFile(regularUploadLocator).catch(() => {});
     sendControllerError(res, error);
   } finally {
     if (req.file?.path) {
@@ -171,8 +204,9 @@ exports.createLesson = async (req, res) => {
 };
 
 exports.updateLesson = async (req, res) => {
-  let replacedLocalPackagePath = null;
   let packageUpload = null;
+  let regularUploadLocator = null;
+  let replacedAsset = null;
   try {
     const body = req.body || {};
     const { title, chapter_id, content, video_url, lesson_order, duration } = body;
@@ -198,16 +232,20 @@ exports.updateLesson = async (req, res) => {
         file_name = originalName;
         packageUpload = await processPackageUpload(req.file);
         file_url = packageUpload.indexUrl;
-        if (lesson[0].file_type === 'package') {
-          replacedLocalPackagePath = getLegacyLocalPackagePath(lesson[0].file_url);
-        }
       } else {
         // Handle regular files
-        const storageName = `lesson-${Date.now()}${ext}`;
-        file_url = await uploadFileToStorage(req.file.path, 'lesson-files', storageName, req.file.mimetype);
+        const storageName = `lesson-${randomUUID()}${ext}`;
+        regularUploadLocator = await uploadPrivateFileToStorage(
+          req.file.path,
+          'lesson-files',
+          storageName,
+          req.file.detectedMime,
+        );
+        file_url = regularUploadLocator;
         file_name = originalName;
         file_type = getFileType(originalName);
       }
+      replacedAsset = lesson[0];
     }
 
     await db.query(
@@ -223,14 +261,19 @@ exports.updateLesson = async (req, res) => {
         lessonId
       ]
     );
-    if (replacedLocalPackagePath) {
-      await cleanupPackage(replacedLocalPackagePath).catch((error) => {
-        console.error('Error cleaning up replaced local package:', error);
+    if (replacedAsset) {
+      await cleanupLessonAsset(replacedAsset).catch(() => {
+        console.error('Unable to clean up replaced lesson file');
       });
     }
-    res.json({ message: 'Lesson updated', package_url: file_type === 'package' ? file_url : null });
+    res.json({
+      message: 'Lesson updated',
+      package_url: file_type === 'package' ? `/api/lessons/${lessonId}/package-info` : null,
+      file_access_url: file_url && file_type !== 'package' ? `/api/files/lessons/${lessonId}/access` : null,
+    });
   } catch (error) {
-    if (packageUpload?.keys) await deleteStorageKeys(packageUpload.keys);
+    if (packageUpload?.keys) await deleteStorageKeys(packageUpload.keys, { privateBucket: true });
+    if (regularUploadLocator) await deleteStoredFile(regularUploadLocator).catch(() => {});
     sendControllerError(res, error);
   } finally {
     if (req.file?.path) {
@@ -248,18 +291,10 @@ exports.deleteLesson = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Clean up package folder if it's a package
-    if (lesson[0].file_type === 'package' && lesson[0].file_url) {
-      try {
-        const packagePath = getLegacyLocalPackagePath(lesson[0].file_url);
-        if (packagePath) await cleanupPackage(packagePath);
-      } catch (error) {
-        console.error('Error cleaning up package:', error);
-        // Continue with lesson deletion even if cleanup fails
-      }
-    }
-
     await db.query('DELETE FROM lessons WHERE id = ?', [lessonId]);
+    await cleanupLessonAsset(lesson[0]).catch(() => {
+      console.error('Unable to clean up deleted lesson file');
+    });
     res.json({ message: 'Lesson deleted' });
   } catch (error) {
     sendControllerError(res, error);
@@ -326,11 +361,33 @@ exports.getPackageInfo = async (req, res) => {
       return res.status(400).json({ message: 'This lesson does not have a package' });
     }
 
+    const entryPath = packageEntryPath(lessonData.file_url);
+    if (!entryPath) {
+      return res.status(422).json({ message: 'Package reference is invalid' });
+    }
+    const ticket = issueFileTicket({
+      kind: 'package',
+      resourceId: lessonData.id,
+      userId: req.user.id,
+    });
+    const cookieSameSite = ['strict', 'lax', 'none'].includes(process.env.FILE_COOKIE_SAME_SITE)
+      ? process.env.FILE_COOKIE_SAME_SITE
+      : 'lax';
+    const cookiePath = `/api/files/packages/${lessonData.id}`;
+    const encodedPath = entryPath.split('/').map(encodeURIComponent).join('/');
+    res.setHeader('Set-Cookie', [
+      `${PACKAGE_COOKIE_NAME}=${encodeURIComponent(ticket)}`,
+      `Path=${cookiePath}`,
+      'HttpOnly',
+      `SameSite=${cookieSameSite[0].toUpperCase()}${cookieSameSite.slice(1)}`,
+      `Max-Age=${30 * 60}`,
+      ...(process.env.NODE_ENV === 'production' || cookieSameSite === 'none' ? ['Secure'] : []),
+    ].join('; '));
     res.json({
-      packageUrl: lessonData.file_url, // This is like /packages/lesson-12345/index.html
+      packageUrl: `${cookiePath}/${encodedPath}`,
       fileName: lessonData.file_name,
-      canEmbed: true, // Can be opened in iframe
-      openMethod: 'iframe' // Or 'redirect' depending on frontend preference
+      canEmbed: true,
+      openMethod: 'iframe',
     });
   } catch (error) {
     sendControllerError(res, error);

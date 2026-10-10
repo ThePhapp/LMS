@@ -177,6 +177,38 @@ test('student assignment read rejects an unpublished assignment', async () => {
   assert.equal(queries.length, 1);
 });
 
+test('submission lists expose an authorized access endpoint instead of the storage locator', async () => {
+  let queryCount = 0;
+  mockDb.query = async sql => {
+    const query = normalized(sql);
+    queryCount += 1;
+    if (query.startsWith('SELECT a.*, c.lecturer_id')) {
+      return [[{ id: 11, course_id: 10, lecturer_id: 5, type: 'essay' }]];
+    }
+    if (query.includes('FROM assignment_submissions s')) {
+      return [[{
+        id: 70,
+        assignment_id: 11,
+        student_id: 9,
+        file_url: 'r2://submission-files/private.pdf',
+      }]];
+    }
+    throw new Error(`Unexpected query: ${query}`);
+  };
+  const res = createResponse();
+
+  await controller.getSubmissions({
+    params: { id: '11' },
+    user: { id: 5, role: 'lecturer' },
+  }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(queryCount, 2);
+  assert.equal(res.body[0].file_url, '/api/files/submissions/70/access');
+  assert.equal(res.body[0].has_file, true);
+  assert.doesNotMatch(JSON.stringify(res.body), /r2:\/\//);
+});
+
 test('bulk question replacement is transaction-scoped and rolls back on insert failure', async () => {
   const original = [{ id: 1, question_text: 'Original' }];
   let persisted = original.map(item => ({ ...item }));

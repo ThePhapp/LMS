@@ -14,6 +14,7 @@ const AssignmentGrading = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [submissionFileAccess, setSubmissionFileAccess] = useState(null);
   const [showGradeModal, setShowGradeModal] = useState(false);
 
   // Grading form
@@ -28,6 +29,28 @@ const AssignmentGrading = () => {
     }
     fetchData();
   }, [assignmentId, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSubmissionFileAccess(null);
+    if (!selectedSubmission?.file_url) return () => { cancelled = true; };
+
+    const accessPath = (selectedSubmission.file_access_url
+      || `/api/files/submissions/${selectedSubmission.id}/access`).replace(/^\/api/, '');
+    api.get(accessPath).then((response) => {
+      if (!cancelled) {
+        setSubmissionFileAccess({
+          ...response.data,
+          url: assetUrl(response.data.url),
+          downloadUrl: assetUrl(response.data.downloadUrl),
+        });
+      }
+    }).catch(() => {
+      if (!cancelled) setSubmissionFileAccess({ error: true });
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedSubmission]);
 
   const fetchData = async () => {
     try {
@@ -361,7 +384,7 @@ const AssignmentGrading = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <FileText size={20} style={{ color: 'var(--primary)' }} />
                         <a
-                          href={assetUrl(selectedSubmission.file_url)}
+                          href={submissionFileAccess?.downloadUrl || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-secondary"

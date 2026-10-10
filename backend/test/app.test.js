@@ -126,6 +126,12 @@ test('unknown routes return JSON and production configuration fails closed', asy
       DATABASE_URL: 'postgres://example',
       JWT_SECRET: 'short',
       ALLOWED_ORIGINS: 'https://lms.example',
+      R2_ACCOUNT_ID: 'account',
+      R2_ACCESS_KEY_ID: 'access-key',
+      R2_SECRET_ACCESS_KEY: 'secret-key',
+      R2_BUCKET_NAME: 'lms-files',
+      R2_PRIVATE_BUCKET_NAME: 'lms-private-files',
+      R2_PUBLIC_URL: 'https://assets.example',
     }),
     /at least 32 characters/,
   );
@@ -135,5 +141,11 @@ test('unknown routes return JSON and production configuration fails closed', asy
     DATABASE_URL: 'postgres://example',
     JWT_SECRET: 'a-secure-production-secret-with-32-characters',
     ALLOWED_ORIGINS: 'https://lms.example',
+    R2_ACCOUNT_ID: 'account',
+    R2_ACCESS_KEY_ID: 'access-key',
+    R2_SECRET_ACCESS_KEY: 'secret-key',
+    R2_BUCKET_NAME: 'lms-files',
+    R2_PRIVATE_BUCKET_NAME: 'lms-private-files',
+    R2_PUBLIC_URL: 'https://assets.example',
   }));
 });
