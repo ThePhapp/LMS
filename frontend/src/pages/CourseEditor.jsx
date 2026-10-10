@@ -316,9 +316,7 @@ const CourseEditor = () => {
       };
 
       if (editingAssignment) {
-        // Note: Backend might not have PUT for assignments, we'll use POST/DELETE pattern
-        await api.delete(`/assignments/${editingAssignment.id}`);
-        await api.post(`/assignments/course/${id}`, payload);
+        await api.put(`/assignments/${editingAssignment.id}`, payload);
       } else {
         await api.post(`/assignments/course/${id}`, payload);
       }
