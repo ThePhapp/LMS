@@ -45,16 +45,16 @@ const Login = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label" htmlFor="login-email">Email</label>
             <input id="login-email" type="email" className="form-input" value={email}
-              onChange={e => setEmail(e.target.value)} required placeholder="example@email.com" />
+              onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="example@email.com" />
           </div>
           <div className="form-group">
-            <label className="form-label">Mật khẩu</label>
+            <label className="form-label" htmlFor="login-password">Mật khẩu</label>
             <div style={{ position: 'relative' }}>
               <input id="login-password" type={showPwd ? 'text' : 'password'} className="form-input"
                 value={password} onChange={e => setPassword(e.target.value)}
-                required placeholder="••••••••" style={{ paddingRight: '2.8rem' }} />
+                required autoComplete="current-password" placeholder="••••••••" style={{ paddingRight: '2.8rem' }} />
               <button type="button" onClick={() => setShowPwd(!showPwd)}
                 style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>
                 {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}

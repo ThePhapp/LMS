@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Users, BookOpen, UserPlus, TrendingUp, Search, RefreshCw } from 'lucide-react';
-import { motion } from 'framer-motion';
 import api from '../services/api';
 
 const ROLE_CONFIG = {

@@ -1,9 +1,11 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
-import { LangContext } from '../contexts/LangContext';
+import { LangContext } from '../contexts/langContextValue';
 import { GraduationCap, BookOpen, LogOut, MessageSquare, User, ChevronDown, Globe, Calendar, Menu, X, Bell, Settings } from 'lucide-react';
 import api, { assetUrl } from '../services/api';
+
+const requestNotifications = () => api.get('/assignments/notifications');
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -22,28 +24,33 @@ const Navbar = () => {
   const notifMenuRef = useRef(null);
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 60000); // Polling every minute
-      return () => clearInterval(interval);
-    }
-  }, [user]);
+    if (!user) return undefined;
+    let cancelled = false;
+    const loadNotifications = () => requestNotifications()
+      .then((res) => {
+        if (cancelled) return;
+        setNotifications(res.data.notifications || []);
+        setUnreadCount(res.data.unread_count || 0);
+      })
+      .catch((error) => console.error('Lỗi lấy thông báo', error));
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await api.get('/assignments/notifications');
-      setNotifications(res.data.notifications || []);
-      setUnreadCount(res.data.unread_count || 0);
-    } catch (error) {
-      console.error('Lỗi lấy thông báo', error);
-    }
-  };
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [user]);
 
   const markAsRead = async (id = 'all') => {
     try {
       await api.put(`/assignments/notifications/${id}/read`);
-      fetchNotifications();
-    } catch (e) { }
+      const res = await requestNotifications();
+      setNotifications(res.data.notifications || []);
+      setUnreadCount(res.data.unread_count || 0);
+    } catch (error) {
+      console.error('Lỗi cập nhật thông báo', error);
+    }
   };
 
   const handleLogout = () => {

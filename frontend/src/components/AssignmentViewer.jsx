@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import api from '../services/api';
 import { CheckCircle2, AlertCircle, Clock, Award, ChevronLeft, ChevronRight, Circle, Play } from 'lucide-react';
 
 const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
-const optionColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
   const { user } = useContext(AuthContext);
@@ -30,24 +29,6 @@ const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
   const attemptCount = assignment.attempt_count || 0;
   const canTakeQuiz = isQuiz && (assignment.max_attempts === 0 || attemptCount < assignment.max_attempts) && !isPastDue;
   
-  useEffect(() => {
-    // If it's a quiz, try to load saved answers from localStorage
-    if (isQuiz && takingQuiz) {
-      const saved = localStorage.getItem(`quiz_answers_${assignment.id}`);
-      if (saved) setAnswers(JSON.parse(saved));
-    }
-  }, [takingQuiz]);
-
-  useEffect(() => {
-    // Timer logic
-    if (takingQuiz && timeLeft !== null && timeLeft > 0) {
-      const timerId = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-      return () => clearInterval(timerId);
-    } else if (takingQuiz && timeLeft === 0) {
-      handleSubmit(new Event('submit')); // auto submit
-    }
-  }, [takingQuiz, timeLeft]);
-
   const startQuiz = () => {
     setTakingQuiz(true);
     setAnswers({});
@@ -65,7 +46,7 @@ const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     if(e && e.preventDefault) e.preventDefault();
     setSubmitting(true);
     setError('');
@@ -91,7 +72,28 @@ const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [answers, assignment.id, content, file, isQuiz, onSubmissionSuccess]);
+
+  useEffect(() => {
+    if (isQuiz && takingQuiz) {
+      const saved = localStorage.getItem(`quiz_answers_${assignment.id}`);
+      if (saved) {
+        try {
+          setAnswers(JSON.parse(saved));
+        } catch {
+          localStorage.removeItem(`quiz_answers_${assignment.id}`);
+        }
+      }
+    }
+  }, [assignment.id, isQuiz, takingQuiz]);
+
+  useEffect(() => {
+    if (takingQuiz && timeLeft !== null && timeLeft > 0) {
+      const timerId = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+      return () => clearInterval(timerId);
+    }
+    if (takingQuiz && timeLeft === 0) handleSubmit();
+  }, [handleSubmit, takingQuiz, timeLeft]);
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -101,6 +103,7 @@ const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
 
   return (
     <div>
+      {error && <div className="alert alert-error" role="alert">{error}</div>}
       <div style={{
         background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
         padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', gap: '2rem', flexWrap: 'wrap', fontSize: '0.9rem'
@@ -127,7 +130,7 @@ const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
         <div style={{ marginBottom: '2rem' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Lịch sử nộp bài ({attemptCount} lần)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {assignment.my_submissions.map((sub, i) => (
+            {assignment.my_submissions.map((sub) => (
               <div key={sub.id} style={{
                 padding: '1rem', background: 'var(--bg)', borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'

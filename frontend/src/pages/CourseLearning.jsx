@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -56,22 +56,72 @@ const CourseLearning = () => {
   const [showSidebar, setShowSidebar] = useState(window.innerWidth > 1024);
   const [lessonFileAccess, setLessonFileAccess] = useState(null);
 
-  useEffect(() => {
-    fetchCourseAndProgress();
-  }, [id, user]);
+  const fetchFullAssignment = useCallback(async (assignmentId) => {
+    try {
+      const res = await api.get(`/assignments/${assignmentId}`);
+      setActiveLesson(prev => ({ ...prev, ...res.data, item_type: 'assignment' }));
+    } catch (error) {
+      console.error('Không thể tải bài tập', error);
+    }
+  }, []);
+
+  const fetchCourseAndProgress = useCallback(async () => {
+    try {
+      const res = await api.get(`/courses/${id}`);
+      setCourse(res.data);
+      if (res.data.lessons?.length > 0) setActiveLesson(res.data.lessons[0]);
+
+      if (user?.role === 'student') {
+        const progRes = await api.get(`/lessons/progress/${id}`);
+        const map = {};
+        progRes.data.forEach(p => { map[p.lesson_id] = p.completed; });
+        setProgress(map);
+      }
+    } catch (error) {
+      console.error('Không thể tải nội dung khóa học', error);
+      navigate(`/courses/${id}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, navigate, user?.role]);
+
+  const fetchNotes = useCallback(async (lessonId) => {
+    try {
+      const res = await api.get(`/interactions/notes/${lessonId}`);
+      setNotes(res.data.content || '');
+    } catch (error) {
+      console.error('Không thể tải ghi chú', error);
+    }
+  }, []);
+
+  const fetchComments = useCallback(async (lessonId) => {
+    try {
+      const res = await api.get(`/interactions/comments/${lessonId}`);
+      setComments(res.data || []);
+    } catch (error) {
+      console.error('Không thể tải bình luận', error);
+    }
+  }, []);
 
   useEffect(() => {
-    if (activeLesson) {
+    fetchCourseAndProgress();
+  }, [fetchCourseAndProgress]);
+
+  const activeLessonId = activeLesson?.id;
+  const activeLessonType = activeLesson?.item_type;
+
+  useEffect(() => {
+    if (activeLessonId) {
       setReplyingTo(null);
       setReplyContent('');
-      if (activeLesson.item_type === 'assignment') {
-        fetchFullAssignment(activeLesson.id);
+      if (activeLessonType === 'assignment') {
+        fetchFullAssignment(activeLessonId);
       } else {
-        fetchNotes();
-        fetchComments();
+        fetchNotes(activeLessonId);
+        fetchComments(activeLessonId);
       }
     }
-  }, [activeLesson?.id, activeLesson?.item_type]);
+  }, [activeLessonId, activeLessonType, fetchComments, fetchFullAssignment, fetchNotes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,50 +148,11 @@ const CourseLearning = () => {
     return () => { cancelled = true; };
   }, [activeLesson?.id, activeLesson?.item_type, activeLesson?.file_type, activeLesson?.file_url, activeLesson?.file_access_url]);
 
-  const fetchFullAssignment = async (assignmentId) => {
-    try {
-      const res = await api.get(`/assignments/${assignmentId}`);
-      setActiveLesson(prev => ({ ...prev, ...res.data, item_type: 'assignment' }));
-    } catch { }
-  };
-
-  const fetchCourseAndProgress = async () => {
-    try {
-      const res = await api.get(`/courses/${id}`);
-      setCourse(res.data);
-      if (res.data.lessons?.length > 0) setActiveLesson(res.data.lessons[0]);
-
-      if (user?.role === 'student') {
-        const progRes = await api.get(`/lessons/progress/${id}`);
-        const map = {};
-        progRes.data.forEach(p => { map[p.lesson_id] = p.completed; });
-        setProgress(map);
-      }
-    } catch {
-      navigate(`/courses/${id}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchNotes = async () => {
-    try {
-      const res = await api.get(`/interactions/notes/${activeLesson.id}`);
-      setNotes(res.data.content || '');
-    } catch { } 
-  };
-
-  const fetchComments = async () => {
-    try {
-      const res = await api.get(`/interactions/comments/${activeLesson.id}`);
-      setComments(res.data || []);
-    } catch { }
-  };
-
   const saveNotes = async () => {
     try {
       await api.post(`/interactions/notes/${activeLesson.id}`, { content: notes });
     } catch(err) {
+      console.error('Failed to save note', err);
       alert('Failed to save note');
     }
   };
@@ -180,7 +191,9 @@ const CourseLearning = () => {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3500);
       }
-    } catch { }
+    } catch (error) {
+      console.error('Không thể cập nhật tiến độ bài học', error);
+    }
   };
 
   if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải bài học...</p></div>;

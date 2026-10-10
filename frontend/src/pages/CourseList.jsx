@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
-import { AuthContext } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, BookOpen, Users, GraduationCap, Star, Filter } from 'lucide-react';
 
@@ -14,7 +13,6 @@ const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
 const CourseList = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   
   // Filters
@@ -25,16 +23,17 @@ const CourseList = () => {
   const [showSidebarMobile, setShowSidebarMobile] = useState(false);
 
   useEffect(() => {
-    fetchCourses();
-  }, [search, category, level, priceFilter]);
-
-  const fetchCourses = () => {
-    setLoading(true);
+    let cancelled = false;
     api.get('/courses', { params: { search, category, level, priceFilter } })
-      .then(res => setCourses(res.data))
+      .then((res) => {
+        if (!cancelled) setCourses(res.data);
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [category, level, priceFilter, search]);
 
   const handleEnrollOrView = (courseId) => {
     navigate(`/courses/${courseId}`);

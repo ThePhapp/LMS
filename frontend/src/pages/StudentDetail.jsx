@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -13,19 +13,9 @@ const StudentDetail = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
-      navigate('/dashboard');
-      return;
-    }
-    fetchStudentProgress();
-  }, [courseId, studentId, user]);
-
-  const fetchStudentProgress = async () => {
+  const fetchStudentProgress = useCallback(async () => {
     try {
-      console.log('Fetching student progress:', { courseId, studentId });
       const res = await api.get(`/enrollments/course/${courseId}/student/${studentId}`);
-      console.log('Student progress data:', res.data);
       setData(res.data);
     } catch (err) {
       console.error('Error fetching student progress:', err);
@@ -34,7 +24,15 @@ const StudentDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, navigate, studentId]);
+
+  useEffect(() => {
+    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
+      navigate('/dashboard');
+      return;
+    }
+    fetchStudentProgress();
+  }, [fetchStudentProgress, navigate, user]);
 
   if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải...</p></div>;
   if (!data) return null;

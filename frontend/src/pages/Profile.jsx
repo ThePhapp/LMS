@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { useLang } from '../contexts/LangContext';
+import { useLang } from '../contexts/langContextValue';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { User, Mail, Shield, Camera, Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react';

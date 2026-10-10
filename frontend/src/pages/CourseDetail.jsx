@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -22,28 +22,31 @@ const CourseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [isEnrolled, setIsEnrolled] = useState(false);
 
-  useEffect(() => {
-    fetchCourse();
-    if (user?.role === 'student') checkEnrollment();
-  }, [id, user]);
-
-  const fetchCourse = async () => {
+  const fetchCourse = useCallback(async () => {
     try {
       const res = await api.get(`/courses/${id}`);
       setCourse(res.data);
-    } catch { 
+    } catch (error) {
+      console.error('Không thể tải khóa học', error);
       navigate('/courses'); 
     } finally { 
       setLoading(false); 
     }
-  };
+  }, [id, navigate]);
 
-  const checkEnrollment = async () => {
+  const checkEnrollment = useCallback(async () => {
     try {
       const res = await api.get('/enrollments/my');
       setIsEnrolled(res.data.some(c => c.id === parseInt(id)));
-    } catch { }
-  };
+    } catch (error) {
+      console.error('Không thể kiểm tra trạng thái đăng ký', error);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchCourse();
+    if (user?.role === 'student') checkEnrollment();
+  }, [checkEnrollment, fetchCourse, user?.role]);
 
   const handleEnroll = async () => {
     if (!user) return navigate('/login');

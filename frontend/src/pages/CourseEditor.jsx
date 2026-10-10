@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -73,15 +73,7 @@ const CourseEditor = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  useEffect(() => {
-    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
-      navigate('/dashboard');
-      return;
-    }
-    if (isEdit) fetchCourse();
-  }, [id, user]);
-
-  const fetchCourse = async () => {
+  const fetchCourse = useCallback(async () => {
     try {
       const res = await api.get(`/courses/${id}`);
       const data = res.data;
@@ -95,7 +87,15 @@ const CourseEditor = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (user && user.role !== 'lecturer' && user.role !== 'admin') {
+      navigate('/dashboard');
+      return;
+    }
+    if (isEdit) fetchCourse();
+  }, [fetchCourse, isEdit, navigate, user]);
 
   const handleSaveBasic = async (e) => {
     e.preventDefault();
@@ -170,7 +170,10 @@ const CourseEditor = () => {
     try {
       await api.delete(`/chapters/${chapId}`);
       fetchCourse();
-    } catch {}
+    } catch (error) {
+      console.error('Không thể xóa chương', error);
+      showToast('Lỗi xóa chương', 'error');
+    }
   };
 
   // Lesson Handlers
@@ -259,7 +262,10 @@ const CourseEditor = () => {
     try {
       await api.delete(`/lessons/${lessonId}`);
       fetchCourse();
-    } catch {}
+    } catch (error) {
+      console.error('Không thể xóa bài học', error);
+      showToast('Lỗi xóa bài học', 'error');
+    }
   };
 
   // Assignment Handlers
@@ -335,7 +341,10 @@ const CourseEditor = () => {
     try {
       await api.delete(`/assignments/${assignmentId}`);
       fetchCourse();
-    } catch {}
+    } catch (error) {
+      console.error('Không thể xóa bài tập', error);
+      showToast('Lỗi xóa bài tập', 'error');
+    }
   };
 
   // Quiz Builder Handlers
@@ -343,7 +352,7 @@ const CourseEditor = () => {
     try {
       const res = await api.get(`/assignments/${assignment.id}`);
       setQuizBuilderAssignment(res.data);
-      const existingQs = (res.data.questions || []).map((q, i) => ({
+      const existingQs = (res.data.questions || []).map(q => ({
         id: q.id,
         question_text: q.question_text,
         options: q.options || ['', ''],
@@ -360,6 +369,7 @@ const CourseEditor = () => {
       setPreviewSubmitted(false);
       setShowQuizBuilder(true);
     } catch (err) {
+      console.error('Không thể tải quiz', err);
       showToast('Không thể tải quiz', 'error');
     }
   };

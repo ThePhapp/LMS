@@ -36,8 +36,6 @@ const Dashboard = () => {
     if (user) fetchData();
   }, [user]);
 
-  const initial = user?.name?.charAt(0)?.toUpperCase() || '?';
-
   return (
     <div>
       {/* Welcome Hero */}

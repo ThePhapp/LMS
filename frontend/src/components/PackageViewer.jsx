@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { FileArchive, ExternalLink, Maximize2, X } from 'lucide-react';
 import api, { assetUrl } from '../services/api';
 
@@ -16,15 +16,7 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (lessonId) {
-      fetchPackageInfo();
-    } else {
-      setLoading(false);
-    }
-  }, [lessonId]);
-
-  const fetchPackageInfo = async () => {
+  const fetchPackageInfo = useCallback(async () => {
     try {
       const response = await api.get(`/lessons/${lessonId}/package-info`);
       setPackageInfo(response.data);
@@ -35,7 +27,17 @@ const PackageViewer = ({ lessonId, fileName, packageUrl, inline = false }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [lessonId]);
+
+  useEffect(() => {
+    if (!lessonId) {
+      setLoading(false);
+      return undefined;
+    }
+    fetchPackageInfo();
+    const refreshTicket = setInterval(fetchPackageInfo, 25 * 60 * 1000);
+    return () => clearInterval(refreshTicket);
+  }, [fetchPackageInfo, lessonId]);
 
   if (loading) {
     return (

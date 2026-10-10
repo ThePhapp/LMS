@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { ArrowLeft, Plus, Trash2, CheckCircle, X, Clock, Award, Users, FileText, Settings, BarChart2 } from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
@@ -29,26 +28,27 @@ const AssignmentDetail = () => {
     question_order: 0
   });
 
-  useEffect(() => {
-    fetchAssignment();
-  }, [id]);
-
-  const fetchAssignment = async () => {
+  const fetchAssignment = useCallback(async () => {
     try {
       const res = await api.get(`/assignments/${id}`);
       setAssignment(res.data);
       
-      if (user.role === 'lecturer' || user.role === 'admin') {
+      if (user?.role === 'lecturer' || user?.role === 'admin') {
         const statsRes = await api.get(`/assignments/${id}/stats`);
         setStats(statsRes.data);
       }
     } catch (err) {
+      console.error('Không thể tải bài tập', err);
       alert('Không thể tải bài tập');
       navigate(-1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate, user?.role]);
+
+  useEffect(() => {
+    fetchAssignment();
+  }, [fetchAssignment]);
 
   const openQModal = (q = null) => {
     if (q) {
@@ -88,6 +88,7 @@ const AssignmentDetail = () => {
       await api.delete(`/assignments/questions/${qId}`);
       fetchAssignment();
     } catch (err) {
+      console.error('Không thể xóa câu hỏi', err);
       alert('Lỗi xóa câu hỏi');
     }
   };

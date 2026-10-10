@@ -1,29 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import CourseList from './pages/CourseList';
-import CourseDetail from './pages/CourseDetail';
-import CourseLearning from './pages/CourseLearning';
-import Timetable from './pages/Timetable';
-import InstructorDashboard from './pages/InstructorDashboard'; 
-import CourseEditor from './pages/CourseEditor';
-import CourseStudents from './pages/CourseStudents';
-import StudentDetail from './pages/StudentDetail';
-import AssignmentGrading from './pages/AssignmentGrading';
-import Gradebook from './pages/Gradebook';
-import Forum from './pages/Forum';
-import Guide from './pages/Guide';
-import Profile from './pages/Profile';
-import AssignmentDetail from './pages/AssignmentDetail';
-import { useContext } from 'react';
+import { lazy, Suspense, useContext } from 'react';
 import { AuthContext } from './contexts/AuthContext';
 import AiChat from './components/AiChat';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminCourses from './pages/AdminCourses';
-import AdminLayout from './components/AdminLayout';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
   ADMIN_ROLES,
@@ -32,6 +11,32 @@ import {
   hasAllowedRole,
   INSTRUCTOR_ROLES,
 } from './routing/access';
+
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CourseList = lazy(() => import('./pages/CourseList'));
+const CourseDetail = lazy(() => import('./pages/CourseDetail'));
+const CourseLearning = lazy(() => import('./pages/CourseLearning'));
+const Timetable = lazy(() => import('./pages/Timetable'));
+const InstructorDashboard = lazy(() => import('./pages/InstructorDashboard'));
+const CourseEditor = lazy(() => import('./pages/CourseEditor'));
+const CourseStudents = lazy(() => import('./pages/CourseStudents'));
+const StudentDetail = lazy(() => import('./pages/StudentDetail'));
+const AssignmentGrading = lazy(() => import('./pages/AssignmentGrading'));
+const Gradebook = lazy(() => import('./pages/Gradebook'));
+const Forum = lazy(() => import('./pages/Forum'));
+const Guide = lazy(() => import('./pages/Guide'));
+const Profile = lazy(() => import('./pages/Profile'));
+const AssignmentDetail = lazy(() => import('./pages/AssignmentDetail'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminCourses = lazy(() => import('./pages/AdminCourses'));
+const AdminLayout = lazy(() => import('./components/AdminLayout'));
+
+function RouteFallback() {
+  return <div className="main-content" role="status">Đang tải trang...</div>;
+}
 
 function PrivateRoute({ children, allowLearningLayout = false, allowedRoles = AUTHENTICATED_ROLES }) {
   const { user, loading } = useContext(AuthContext);
@@ -150,7 +155,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <Suspense fallback={<RouteFallback />}>
+        <AppContent />
+      </Suspense>
     </Router>
   );
 }

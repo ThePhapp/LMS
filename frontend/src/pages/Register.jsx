@@ -41,19 +41,19 @@ const Register = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Họ và tên</label>
+            <label className="form-label" htmlFor="reg-name">Họ và tên</label>
             <input id="reg-name" type="text" className="form-input" value={form.name}
-              onChange={e => set('name', e.target.value)} required placeholder="Nguyễn Văn A" />
+              onChange={e => set('name', e.target.value)} required autoComplete="name" placeholder="Nguyễn Văn A" />
           </div>
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label" htmlFor="reg-email">Email</label>
             <input id="reg-email" type="email" className="form-input" value={form.email}
-              onChange={e => set('email', e.target.value)} required placeholder="example@email.com" />
+              onChange={e => set('email', e.target.value)} required autoComplete="email" placeholder="example@email.com" />
           </div>
           <div className="form-group">
-            <label className="form-label">Mật khẩu</label>
+            <label className="form-label" htmlFor="reg-password">Mật khẩu</label>
             <input id="reg-password" type="password" className="form-input" value={form.password}
-              onChange={e => set('password', e.target.value)} required minLength={8} placeholder="Tối thiểu 8 ký tự" />
+              onChange={e => set('password', e.target.value)} required minLength={8} autoComplete="new-password" placeholder="Tối thiểu 8 ký tự" />
           </div>
 
           <p className="auth-subtitle" style={{ marginBottom: '1rem' }}>

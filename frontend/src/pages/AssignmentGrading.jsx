@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -22,13 +22,29 @@ const AssignmentGrading = () => {
   const [feedback, setFeedback] = useState('');
   const [grading, setGrading] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const [assignmentRes, submissionsRes] = await Promise.all([
+        api.get(`/assignments/${assignmentId}`),
+        api.get(`/assignments/${assignmentId}/submissions`)
+      ]);
+      setAssignment(assignmentRes.data);
+      setSubmissions(submissionsRes.data);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi tải dữ liệu');
+      navigate('/instructor/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, [assignmentId, navigate]);
+
   useEffect(() => {
     if (user && user.role !== 'lecturer' && user.role !== 'admin') {
       navigate('/dashboard');
       return;
     }
     fetchData();
-  }, [assignmentId, user]);
+  }, [fetchData, navigate, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,22 +67,6 @@ const AssignmentGrading = () => {
 
     return () => { cancelled = true; };
   }, [selectedSubmission]);
-
-  const fetchData = async () => {
-    try {
-      const [assignmentRes, submissionsRes] = await Promise.all([
-        api.get(`/assignments/${assignmentId}`),
-        api.get(`/assignments/${assignmentId}/submissions`)
-      ]);
-      setAssignment(assignmentRes.data);
-      setSubmissions(submissionsRes.data);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Lỗi tải dữ liệu');
-      navigate('/instructor/dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const openGradeModal = (submission) => {
     setSelectedSubmission(submission);

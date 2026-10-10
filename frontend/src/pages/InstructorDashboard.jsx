@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { assetUrl } from '../services/api';
@@ -17,30 +17,32 @@ const InstructorDashboard = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  const fetchCourses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/courses', { params: { search: searchQuery, category: categoryFilter } });
+      let filtered = res.data;
+      if (user?.role !== 'admin') {
+        if (filterType === 'my_courses') {
+          filtered = res.data.filter(c => c.lecturer_id === user?.id);
+        } else if (filterType === 'public_courses') {
+          filtered = res.data.filter(c => c.lecturer_id !== user?.id);
+        }
+      }
+      setCourses(filtered);
+    } catch (error) {
+      console.error('Không thể tải danh sách khóa học', error);
+    }
+    finally { setLoading(false); }
+  }, [categoryFilter, filterType, searchQuery, user?.id, user?.role]);
+
   useEffect(() => {
     if (user && user.role !== 'lecturer' && user.role !== 'admin') {
       navigate('/dashboard');
       return;
     }
     fetchCourses();
-  }, [user, filterType, categoryFilter]);
-
-  const fetchCourses = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/courses', { params: { search: searchQuery, category: categoryFilter } });
-      let filtered = res.data;
-      if (user.role !== 'admin') {
-        if (filterType === 'my_courses') {
-          filtered = res.data.filter(c => c.lecturer_id === user.id);
-        } else if (filterType === 'public_courses') {
-          filtered = res.data.filter(c => c.lecturer_id !== user.id);
-        }
-      }
-      setCourses(filtered);
-    } catch { }
-    finally { setLoading(false); }
-  };
+  }, [fetchCourses, navigate, user]);
 
   const handleSearch = (e) => {
     e.preventDefault();

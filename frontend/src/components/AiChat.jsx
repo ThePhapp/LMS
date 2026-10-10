@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { X, Send, Bot, User, Loader, Trash2, Sparkles } from 'lucide-react';
-import { LangContext } from '../contexts/LangContext';
+import { LangContext } from '../contexts/langContextValue';
 import { AuthContext } from '../contexts/AuthContext';
 import api from '../services/api';
 import { buildAiHistory } from '../utils/aiChat';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BookOpen, Search, RefreshCw, Trash2, Users, FileText, Tag, AlertTriangle, X, ChevronDown, Eye } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api, { assetUrl } from '../services/api';
 
