@@ -8,6 +8,12 @@ const {
   deleteStorageKeys,
 } = require('../config/storage');
 const { extractPackageFromFile, cleanupPackage } = require('../utils/zipHandler');
+const {
+  CourseAccessError,
+  parseId,
+  requireCourseAccess,
+  requireLessonAccess,
+} = require('../services/courseAccess');
 
 const tempUploadDir = path.resolve(__dirname, '../uploads/tmp');
 
@@ -60,6 +66,22 @@ function getLegacyLocalPackagePath(fileUrl) {
   return packagePath;
 }
 
+async function validateChapterForCourse(chapterId, courseId) {
+  if (chapterId === undefined || chapterId === null || chapterId === '') return null;
+  const numericChapterId = Number(chapterId);
+  if (!Number.isInteger(numericChapterId) || numericChapterId <= 0) {
+    throw new CourseAccessError(400, 'Chapter ID must be a positive integer');
+  }
+  const [chapters] = await db.query(
+    'SELECT id FROM chapters WHERE id = ? AND course_id = ?',
+    [numericChapterId, courseId],
+  );
+  if (!chapters.length) {
+    throw new CourseAccessError(400, 'Chapter does not belong to this course');
+  }
+  return numericChapterId;
+}
+
 async function processPackageUpload(uploadedFile) {
   const tempPackageDir = path.join(tempUploadDir, `lesson-pkg-${randomUUID()}`);
   let uploadedPackage = null;
@@ -96,16 +118,19 @@ async function processPackageUpload(uploadedFile) {
 }
 
 exports.createLesson = async (req, res) => {
-  const { course_id, chapter_id, title, content, video_url, lesson_order, duration } = req.body;
   let file_url = null, file_name = null, file_type = null;
   let packageUpload = null;
 
   try {
-    const [course] = await db.query('SELECT lecturer_id FROM courses WHERE id = ?', [course_id]);
+    const body = req.body || {};
+    const { chapter_id, title, content, video_url, lesson_order, duration } = body;
+    const courseId = parseId(body.course_id, 'Course ID');
+    const [course] = await db.query('SELECT lecturer_id FROM courses WHERE id = ?', [courseId]);
     if (course.length === 0) return res.status(404).json({ message: 'Course not found' });
-    if (course[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
+    if (Number(course[0].lecturer_id) !== Number(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
+    const validatedChapterId = await validateChapterForCourse(chapter_id, courseId);
 
     if (req.file) {
       const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
@@ -128,11 +153,11 @@ exports.createLesson = async (req, res) => {
 
     const [result] = await db.query(
       'INSERT INTO lessons (course_id, chapter_id, title, content, video_url, file_url, file_name, file_type, lesson_order, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
-      [course_id, chapter_id || null, title, content, video_url || null, file_url, file_name, file_type, lesson_order || 0, duration || null]
+      [courseId, validatedChapterId, title, content, video_url || null, file_url, file_name, file_type, lesson_order || 0, duration || null]
     );
 
     res.status(201).json({
-      id: result[0].id, course_id, chapter_id, title, content, video_url, file_url, file_name, file_type,
+      id: result[0].id, course_id: courseId, chapter_id: validatedChapterId, title, content, video_url, file_url, file_name, file_type,
       lesson_order: lesson_order || 0, duration, package_url: file_type === 'package' ? file_url : null
     });
   } catch (error) {
@@ -146,15 +171,20 @@ exports.createLesson = async (req, res) => {
 };
 
 exports.updateLesson = async (req, res) => {
-  const { title, chapter_id, content, video_url, lesson_order, duration } = req.body;
   let replacedLocalPackagePath = null;
   let packageUpload = null;
   try {
-    const [lesson] = await db.query('SELECT l.*, c.lecturer_id FROM lessons l JOIN courses c ON l.course_id = c.id WHERE l.id = ?', [req.params.id]);
+    const body = req.body || {};
+    const { title, chapter_id, content, video_url, lesson_order, duration } = body;
+    const lessonId = parseId(req.params.id, 'Lesson ID');
+    const [lesson] = await db.query('SELECT l.*, c.lecturer_id FROM lessons l JOIN courses c ON l.course_id = c.id WHERE l.id = ?', [lessonId]);
     if (lesson.length === 0) return res.status(404).json({ message: 'Lesson not found' });
-    if (lesson[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
+    if (Number(lesson[0].lecturer_id) !== Number(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
+    const validatedChapterId = chapter_id === undefined
+      ? lesson[0].chapter_id
+      : await validateChapterForCourse(chapter_id, lesson[0].course_id);
 
     let file_url = lesson[0].file_url, file_name = lesson[0].file_name, file_type = lesson[0].file_type;
     
@@ -184,13 +214,13 @@ exports.updateLesson = async (req, res) => {
       'UPDATE lessons SET title=?, chapter_id=?, content=?, video_url=?, file_url=?, file_name=?, file_type=?, lesson_order=?, duration=? WHERE id=?',
       [
         title || lesson[0].title,
-        chapter_id !== undefined ? (chapter_id || null) : lesson[0].chapter_id,
+        validatedChapterId,
         content || lesson[0].content,
         video_url !== undefined ? video_url : lesson[0].video_url,
         file_url, file_name, file_type,
         lesson_order !== undefined ? lesson_order : lesson[0].lesson_order,
         duration || lesson[0].duration,
-        req.params.id
+        lessonId
       ]
     );
     if (replacedLocalPackagePath) {
@@ -211,9 +241,10 @@ exports.updateLesson = async (req, res) => {
 
 exports.deleteLesson = async (req, res) => {
   try {
-    const [lesson] = await db.query('SELECT l.*, c.lecturer_id FROM lessons l JOIN courses c ON l.course_id = c.id WHERE l.id = ?', [req.params.id]);
+    const lessonId = parseId(req.params.id, 'Lesson ID');
+    const [lesson] = await db.query('SELECT l.*, c.lecturer_id FROM lessons l JOIN courses c ON l.course_id = c.id WHERE l.id = ?', [lessonId]);
     if (lesson.length === 0) return res.status(404).json({ message: 'Lesson not found' });
-    if (lesson[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
+    if (Number(lesson[0].lecturer_id) !== Number(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -228,40 +259,48 @@ exports.deleteLesson = async (req, res) => {
       }
     }
 
-    await db.query('DELETE FROM lessons WHERE id = ?', [req.params.id]);
+    await db.query('DELETE FROM lessons WHERE id = ?', [lessonId]);
     res.json({ message: 'Lesson deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
 exports.markProgress = async (req, res) => {
-  const { lesson_id, completed } = req.body;
   try {
+    const { lesson_id, completed } = req.body || {};
+    if (req.user.role !== 'student') {
+      throw new CourseAccessError(403, 'Only students can update lesson progress');
+    }
+    if (typeof completed !== 'boolean') {
+      throw new CourseAccessError(400, 'completed must be a boolean');
+    }
+    const lesson = await requireLessonAccess(db, lesson_id, req.user);
     await db.query(
       `INSERT INTO lesson_progress (student_id, lesson_id, completed, completed_at)
        VALUES (?, ?, ?, ?)
        ON CONFLICT (student_id, lesson_id) DO UPDATE
          SET completed = EXCLUDED.completed, completed_at = EXCLUDED.completed_at`,
-      [req.user.id, lesson_id, completed, completed ? new Date() : null]
+      [req.user.id, lesson.id, completed, completed ? new Date() : null]
     );
     res.json({ message: 'Progress updated' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
 exports.getProgressForCourse = async (req, res) => {
   try {
+    const course = await requireCourseAccess(db, req.params.courseId, req.user);
     const [rows] = await db.query(
       `SELECT lp.lesson_id, lp.completed FROM lesson_progress lp
        JOIN lessons l ON lp.lesson_id = l.id
        WHERE l.course_id = ? AND lp.student_id = ?`,
-      [req.params.courseId, req.user.id]
+      [course.id, req.user.id]
     );
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -271,9 +310,10 @@ exports.getProgressForCourse = async (req, res) => {
  */
 exports.getPackageInfo = async (req, res) => {
   try {
+    const authorizedLesson = await requireLessonAccess(db, req.params.lessonId, req.user);
     const [lesson] = await db.query(
       'SELECT id, file_type, file_url, file_name FROM lessons WHERE id = ?',
-      [req.params.lessonId]
+      [authorizedLesson.id]
     );
 
     if (lesson.length === 0) {
@@ -293,6 +333,6 @@ exports.getPackageInfo = async (req, res) => {
       openMethod: 'iframe' // Or 'redirect' depending on frontend preference
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };

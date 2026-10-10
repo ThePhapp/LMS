@@ -49,6 +49,17 @@ exports.protect = async (req, res, next) => {
   return next();
 };
 
+// Authenticate when a bearer token is supplied, while allowing public metadata
+// requests to continue without one. Invalid/expired credentials never downgrade
+// to anonymous access.
+exports.optionalAuth = async (req, res, next) => {
+  const authorization = req.headers?.authorization;
+  if (authorization === undefined || authorization === null || authorization === '') {
+    return next();
+  }
+  return exports.protect(req, res, next);
+};
+
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
