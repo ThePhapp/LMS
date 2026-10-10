@@ -2,12 +2,8 @@ import React, { useState, useRef, useEffect, useContext } from 'react';
 import { X, Send, Bot, User, Loader, Trash2, Sparkles } from 'lucide-react';
 import { LangContext } from '../contexts/LangContext';
 import { AuthContext } from '../contexts/AuthContext';
-
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-
-const SYSTEM_PROMPT = `Bạn là trợ lý AI thông minh của hệ thống học trực tuyến Lớp Học Đổi Mới. Hãy giúp học viên và giáo viên với các câu hỏi về khóa học, học tập, lập trình, và các vấn đề học thuật. Trả lời ngắn gọn, dễ hiểu, thân thiện và chính xác. Hỗ trợ cả tiếng Việt và tiếng Anh.`;
+import api from '../services/api';
+import { buildAiHistory } from '../utils/aiChat';
 
 export default function AiChat() {
   const { t, lang } = useContext(LangContext);
@@ -41,60 +37,25 @@ export default function AiChat() {
     setInput('');
     setLoading(true);
 
-    // Build conversation history for Gemini
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: SYSTEM_PROMPT }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: lang === 'vi' ? 'Xin chào! Tôi là trợ lý AI của Lớp Học Đổi Mới. Tôi có thể giúp gì cho bạn?' : 'Hello! I am Lớp Học Đổi Mới AI assistant. How can I help you?' }],
-      },
-      ...newMessages.map((m) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }],
-      })),
-    ];
-
     try {
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          },
-        }),
+      const { data } = await api.post('/ai/chat', {
+        mode: 'general',
+        locale: lang,
+        messages: buildAiHistory(newMessages),
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        const errMsg = errData?.error?.message || `HTTP ${res.status}`;
-        setMessages((prev) => [
-          ...prev,
-          { role: 'model', text: lang === 'vi' ? `Lỗi: ${errMsg}` : `Error: ${errMsg}` },
-        ]);
-        return;
-      }
-
-      const data = await res.json();
-      const reply =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      const reply = data?.reply ||
         (lang === 'vi' ? 'Xin lỗi, tôi không thể trả lời lúc này.' : 'Sorry, I could not generate a response.');
 
       setMessages((prev) => [...prev, { role: 'model', text: reply }]);
     } catch (err) {
-      console.error('Gemini API error:', err);
+      const rateLimited = err.response?.status === 429;
       setMessages((prev) => [
         ...prev,
         {
           role: 'model',
-          text: lang === 'vi'
-            ? 'Đã xảy ra lỗi kết nối. Vui lòng thử lại.'
-            : 'A connection error occurred. Please try again.',
+          text: rateLimited
+            ? (lang === 'vi' ? 'Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.' : 'You are sending too quickly. Please try again shortly.')
+            : (lang === 'vi' ? 'Đã xảy ra lỗi kết nối. Vui lòng thử lại.' : 'A connection error occurred. Please try again.'),
         },
       ]);
     } finally {
@@ -222,11 +183,6 @@ export default function AiChat() {
 
           {/* Input */}
           <div className="ai-chat-input-area">
-            {!GEMINI_API_KEY && (
-              <div className="ai-chat-api-warning">
-                ⚠️ {lang === 'vi' ? 'Chưa cấu hình VITE_GEMINI_API_KEY' : 'VITE_GEMINI_API_KEY not configured'}
-              </div>
-            )}
             <div className="ai-chat-input-row">
               <textarea
                 ref={inputRef}
@@ -236,6 +192,7 @@ export default function AiChat() {
                 onKeyDown={handleKeyDown}
                 placeholder={t('ai_chat_placeholder') || 'Ask me anything... (Enter to send)'}
                 rows={1}
+                maxLength={4000}
                 disabled={loading}
               />
               <button

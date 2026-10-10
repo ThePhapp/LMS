@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Send, Loader, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
-import { MUSHROOM_KNOWLEDGE } from '../data/mushroomKnowledge';
+import api from '../services/api';
+import { buildAiHistory } from '../utils/aiChat';
 
 function playSound(type) {
   try {
@@ -37,63 +38,9 @@ function playSound(type) {
       });
       setTimeout(() => ctx.close(), 1200);
     }
-  } catch (_) {}
-}
-
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-
-function buildSystemPrompt(lesson, course) {
-  const lessonTitle = lesson?.title || 'bài học này';
-  const lessonContent = lesson?.content || '';
-  const courseTitle = course?.title || '';
-
-  return `Bạn là Miu - một bạn robot dễ thương, thông minh và rất yêu trẻ em! Bạn đang giúp các bạn học sinh tiểu học học bài "${lessonTitle}" trong khoá học "${courseTitle}".
-
-Nội dung bài học:
-${lessonContent || '(Chưa có mô tả chi tiết)'}
-
-Dữ liệu tham khảo (Ưu tiên trả lời dựa theo dữ liệu này khi được hỏi):
-${MUSHROOM_KNOWLEDGE}
-
-Nhiệm vụ của bạn:
-
-Giải thích kiến thức khoa học lớp 4 một cách dễ hiểu, ngắn gọn, chính xác và sinh động.
-Hỗ trợ học sinh học chủ đề Nấm, bao gồm:
-Bài 19: Đặc điểm chung của nấm
-Bài 20: Nấm ăn và nấm trong chế biến thực phẩm
-Bài 21: Nấm gây hỏng thực phẩm và nấm độc
-Bài 22: Ôn tập chủ đề Nấm
-Trả lời các câu hỏi liên quan đến đặc điểm, nơi sống, lợi ích, tác hại và ứng dụng của nấm trong đời sống.
-Hỗ trợ học sinh ôn tập, củng cố kiến thức và tạo hứng thú học tập.
-
-Yêu cầu khi trả lời:
-
-Sử dụng tiếng Việt đơn giản, phù hợp với học sinh lớp 4.
-Chỉ trả lời theo kiến thức Khoa học lớp 4.
-Trả lời ngắn gọn, đúng trọng tâm, không lan man.
-Ưu tiên cách giải thích giống sách giáo khoa tiểu học.
-Dùng ví dụ gần gũi như gia đình, trường học, cây cối, thức ăn, thiên nhiên,...
-Có thể dùng emoji vừa phải 🌟🍄✨ để giúp học sinh hứng thú hơn.
-Nếu có từ khó, cần giải thích lại thật đơn giản.
-Khi giải thích nên trình bày từng ý rõ ràng, dễ đọc.
-Không dùng kiến thức quá nâng cao; nếu vượt chương trình lớp 4 thì nói nhẹ nhàng rằng nội dung đó sẽ học ở lớp lớn hơn.
-Giữ giọng điệu thân thiện, nhẹ nhàng như cô giáo hoặc một người bạn học giỏi đang hướng dẫn.
-
-Ví dụ cách trả lời:
-Câu hỏi: “Nơi sống của nấm”
-Trả lời:
-“Nơi sống của nấm rất đa dạng và phong phú. Nấm thường sống ở nơi ẩm ướt và có nhiều chất dinh dưỡng như đất ẩm, gỗ mục, lá cây mục hoặc thức ăn để lâu ngày 🍄”
-
-Quy tắc chào hỏi:
-
-Nếu học sinh nói: “Xin chào”, “Chào”, “Hi”,...
-thì trả lời:
-“Chào em, em có thắc mắc gì không nào? 🌟”
-
-Mục tiêu:
-Giúp học sinh hiểu bài, yêu thích môn Khoa học, phát triển sự tò mò và hứng thú khám phá thế giới tự nhiên.`;
+  } catch {
+    // Audio feedback is optional and may be blocked by the browser.
+  }
 }
 
 const SUGGESTIONS = [
@@ -103,7 +50,7 @@ const SUGGESTIONS = [
   { emoji: '🎯', text: 'Bài này dùng để làm gì trong cuộc sống?' },
 ];
 
-export default function LessonAiChat({ lesson, course }) {
+export default function LessonAiChat({ lesson }) {
   const { user } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -121,7 +68,9 @@ export default function LessonAiChat({ lesson, course }) {
   const toggleSound = () => {
     setSoundEnabled(prev => {
       const next = !prev;
-      try { localStorage.setItem('miu_sound', next ? 'on' : 'off'); } catch {}
+      try { localStorage.setItem('miu_sound', next ? 'on' : 'off'); } catch {
+        // Keep the in-memory preference when storage is unavailable.
+      }
       return next;
     });
   };
@@ -165,7 +114,9 @@ export default function LessonAiChat({ lesson, course }) {
         window.responsiveVoice.speak(clean, 'Vietnamese Female', { rate: 0.95, pitch: 1, volume: 1 });
         return;
       }
-    } catch (_) {}
+    } catch {
+      // Fall back to the browser's native speech synthesis below.
+    }
     // Native fallback
     if (!('speechSynthesis' in window)) return;
     const voices = window.speechSynthesis.getVoices();
@@ -227,55 +178,28 @@ export default function LessonAiChat({ lesson, course }) {
     setLoading(true);
     if (soundEnabled) playSound('send');
 
-    const systemPrompt = buildSystemPrompt(lesson, course);
-
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: `Xin chào bạn nhỏ! 👋 Mình là Miu - bạn robot siêu dễ thương của bài học "${lesson?.title || 'này'}" nè! Bạn có câu hỏi gì cứ hỏi Miu nhé! 🌟` }],
-      },
-      ...newMessages.map((m) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }],
-      })),
-    ];
-
     try {
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          },
-        }),
+      const { data } = await api.post('/ai/chat', {
+        mode: 'lesson',
+        lessonId: lesson?.id,
+        locale: 'vi',
+        messages: buildAiHistory(newMessages),
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        const errMsg = errData?.error?.message || `HTTP ${res.status}`;
-        setMessages((prev) => [...prev, { role: 'model', text: `Lỗi: ${errMsg}` }]);
-        return;
-      }
-
-      const data = await res.json();
-      const reply =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      const reply = data?.reply ||
         'Xin lỗi, tôi không thể trả lời lúc này.';
 
       setMessages((prev) => [...prev, { role: 'model', text: reply }]);
       if (soundEnabled) playSound('receive');
     } catch (err) {
-      console.error('Gemini API error:', err);
+      const rateLimited = err.response?.status === 429;
       setMessages((prev) => [
         ...prev,
-        { role: 'model', text: 'Đã xảy ra lỗi kết nối. Vui lòng thử lại.' },
+        {
+          role: 'model',
+          text: rateLimited
+            ? 'Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.'
+            : 'Đã xảy ra lỗi kết nối. Vui lòng thử lại.',
+        },
       ]);
     } finally {
       setLoading(false);
@@ -564,15 +488,6 @@ export default function LessonAiChat({ lesson, course }) {
         background: '#fff',
         flexShrink: 0,
       }}>
-        {!GEMINI_API_KEY && (
-          <div style={{
-            background: '#FEF3C7', border: '2px solid #F59E0B', borderRadius: 12,
-            padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#92400E',
-            marginBottom: '0.5rem', fontWeight: 600,
-          }}>
-            ⚠️ Chưa cấu hình VITE_GEMINI_API_KEY
-          </div>
-        )}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
           <textarea
             ref={inputRef}
@@ -581,6 +496,7 @@ export default function LessonAiChat({ lesson, course }) {
             onKeyDown={handleKeyDown}
             placeholder="Hỏi Miu bất cứ điều gì về bài học..."
             rows={1}
+            maxLength={4000}
             disabled={loading}
             style={{
               flex: 1,
