@@ -78,10 +78,12 @@ export default function AiChat() {
     <>
       {/* Floating button */}
       <button
+        type="button"
         className="ai-chat-fab"
         onClick={() => setOpen((o) => !o)}
         title={t('ai_chat_title') || 'AI Assistant'}
         aria-label="Open AI chat"
+        aria-expanded={open}
       >
         {open ? <X size={22} /> : <Sparkles size={22} />}
         {!open && messages.length > 0 && (
@@ -109,11 +111,11 @@ export default function AiChat() {
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               {messages.length > 0 && (
-                <button className="ai-chat-icon-btn" onClick={clearChat} title={t('ai_chat_clear') || 'Clear chat'}>
+                <button type="button" className="ai-chat-icon-btn" onClick={clearChat} title={t('ai_chat_clear') || 'Clear chat'} aria-label={t('ai_chat_clear') || 'Clear chat'}>
                   <Trash2 size={15} />
                 </button>
               )}
-              <button className="ai-chat-icon-btn" onClick={() => setOpen(false)} title="Close">
+              <button type="button" className="ai-chat-icon-btn" onClick={() => setOpen(false)} title="Close" aria-label="Close AI chat">
                 <X size={15} />
               </button>
             </div>
@@ -138,6 +140,7 @@ export default function AiChat() {
                     : ['Explain e-learning materials', 'What are the benefits of e-learning materials?']
                   ).map((s) => (
                     <button
+                      type="button"
                       key={s}
                       className="ai-chat-suggestion-btn"
                       onClick={() => { setInput(s); inputRef.current?.focus(); }}
@@ -194,12 +197,15 @@ export default function AiChat() {
                 rows={1}
                 maxLength={4000}
                 disabled={loading}
+                aria-label={t('ai_chat_placeholder') || 'AI chat message'}
               />
               <button
+                type="button"
                 className="ai-chat-send-btn"
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
                 title="Send"
+                aria-label="Send message"
               >
                 {loading ? <Loader size={18} className="ai-spin" /> : <Send size={18} />}
               </button>

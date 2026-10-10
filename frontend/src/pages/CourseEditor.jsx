@@ -4,6 +4,7 @@ import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { FileEdit, List, DollarSign, CheckCircle, ArrowLeft, Upload, Plus, Trash2, X, Video, File, FileText, ClipboardList, Calendar, Copy, ChevronLeft, ChevronRight, Eye, Save, CheckCircle2, AlertCircle, GripVertical, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
+import { PageLoadingState } from '../components/ui/Feedback';
 
 const CATEGORIES = ['All', 'Math', 'Vietnamese', 'English', 'Ethics', 'Nature', 'Science', 'HistoryGeography', 'Music', 'Arts' ];
 const CATEGORY_LABELS = { All: 'Tất cả', Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên và Xã hội', Science: 'Khoa học', HistoryGeography: 'Lịch sử và địa lý', Music: 'Âm nhạc', Arts: 'Mỹ thuật'};
@@ -464,15 +465,15 @@ const CourseEditor = () => {
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /></div>;
+  if (loading) return <PageLoadingState label="Đang tải trình soạn thảo" />;
 
   return (
-    <div className="main-content">
+    <div className="main-content editor-page">
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }} onClick={() => navigate('/instructor/dashboard')}>
         <ArrowLeft size={16} /> Quay lại Dashboard
       </button>
 
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+      <div className="editor-layout" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
         
         {/* Sidebar Menu */}
         <div className="card" style={{ width: '240px', flexShrink: 0, padding: '1rem' }}>

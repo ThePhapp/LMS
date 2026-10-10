@@ -102,9 +102,9 @@ const AssignmentViewer = ({ assignment, onSubmissionSuccess }) => {
   };
 
   return (
-    <div>
+    <div className="assignment-viewer">
       {error && <div className="alert alert-error" role="alert">{error}</div>}
-      <div style={{
+      <div className="assignment-summary" style={{
         background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
         padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', gap: '2rem', flexWrap: 'wrap', fontSize: '0.9rem'
       }}>

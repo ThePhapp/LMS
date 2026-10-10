@@ -10,6 +10,7 @@ import AssignmentViewer from '../components/AssignmentViewer';
 import PackageViewer from '../components/PackageViewer';
 import { Confetti, FunProgressBar, LessonCompleteToast } from '../components/FunElements';
 import LessonAiChat from '../components/LessonAiChat';
+import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 function getYoutubeId(url) {
   if (!url) return null;
@@ -42,6 +43,7 @@ const CourseLearning = () => {
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [activeLesson, setActiveLesson] = useState(null);
   const [progress, setProgress] = useState({});
   const [activeTab, setActiveTab] = useState('overview');
@@ -77,13 +79,13 @@ const CourseLearning = () => {
         progRes.data.forEach(p => { map[p.lesson_id] = p.completed; });
         setProgress(map);
       }
-    } catch (error) {
-      console.error('Không thể tải nội dung khóa học', error);
-      navigate(`/courses/${id}`);
+    } catch (requestError) {
+      console.error('Không thể tải nội dung khóa học', requestError);
+      setError(requestError.response?.data?.message || 'Không thể tải nội dung khóa học.');
     } finally {
       setLoading(false);
     }
-  }, [id, navigate, user?.role]);
+  }, [id, user?.role]);
 
   const fetchNotes = useCallback(async (lessonId) => {
     try {
@@ -196,7 +198,8 @@ const CourseLearning = () => {
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải bài học...</p></div>;
+  if (loading) return <PageLoadingState label="Đang tải bài học" />;
+  if (error) return <ErrorState title="Không thể tải khóa học" detail={error} onRetry={() => { setLoading(true); setError(''); fetchCourseAndProgress(); }} />;
   if (!course) return null;
 
   const lessons = course.lessons || [];
@@ -205,11 +208,11 @@ const CourseLearning = () => {
   const ytId = activeLesson ? getYoutubeId(activeLesson.video_url) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
+    <div className="learning-page" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
       {/* Top Bar */}
       <div className="learn-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button className="learn-topbar-back" onClick={() => navigate(`/courses/${id}`)}>
+          <button type="button" className="learn-topbar-back" aria-label="Quay lại khóa học" onClick={() => navigate(`/courses/${id}`)}>
             <ArrowLeft size={18} />
           </button>
           <div className="learn-topbar-title">{course.title}</div>
@@ -221,8 +224,10 @@ const CourseLearning = () => {
               <FunProgressBar pct={progressPct} />
             </div>
           )}
-          <button 
+          <button
+            type="button"
             className="learn-topbar-back" 
+            aria-label={showSidebar ? 'Ẩn mục lục' : 'Hiện mục lục'}
             onClick={() => setShowSidebar(!showSidebar)} 
             title={showSidebar ? 'Ẩn mục lục' : 'Hiện mục lục'}
             style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}

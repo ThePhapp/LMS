@@ -226,7 +226,7 @@ export default function LessonAiChat({ lesson }) {
   const canSend = !!input.trim() && !loading;
 
   return (
-    <div style={{
+    <div className="lesson-ai-chat" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '560px',
@@ -278,8 +278,10 @@ export default function LessonAiChat({ lesson }) {
 
         <div style={{ display: 'flex', gap: '0.5rem', zIndex: 1, alignItems: 'center' }}>
           <button
+            type="button"
             onClick={toggleSound}
             title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+            aria-label={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
             style={{
               background: 'rgba(255,255,255,0.25)',
               border: '2px solid rgba(255,255,255,0.4)',
@@ -294,8 +296,10 @@ export default function LessonAiChat({ lesson }) {
           </button>
           {messages.length > 0 && (
             <button
+              type="button"
               onClick={() => setMessages([])}
               title="Bắt đầu lại"
+              aria-label="Bắt đầu lại cuộc trò chuyện"
               style={{
                 background: 'rgba(255,255,255,0.25)',
                 border: '2px solid rgba(255,255,255,0.4)',
@@ -357,6 +361,7 @@ export default function LessonAiChat({ lesson }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch' }}>
               {SUGGESTIONS.map((s) => (
                 <button
+                  type="button"
                   key={s.text}
                   onClick={() => sendMessage(s.text)}
                   style={{
@@ -431,8 +436,10 @@ export default function LessonAiChat({ lesson }) {
               </div>
               {msg.role === 'model' && (
                 <button
+                  type="button"
                   onClick={() => speakText(msg.text)}
                   title="Nghe Miu đọc"
+                  aria-label="Nghe Miu đọc"
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     color: '#FF6B9D', padding: '2px 6px', marginTop: 3,
@@ -498,6 +505,7 @@ export default function LessonAiChat({ lesson }) {
             rows={1}
             maxLength={4000}
             disabled={loading}
+            aria-label="Tin nhắn cho Miu"
             style={{
               flex: 1,
               resize: 'none',
@@ -518,8 +526,10 @@ export default function LessonAiChat({ lesson }) {
             onBlur={(e) => { e.target.style.borderColor = '#FFD6E8'; }}
           />
           <button
+            type="button"
             onClick={startListening}
             title={isListening ? 'Dừng ghi âm' : 'Nói với Miu'}
+            aria-label={isListening ? 'Dừng ghi âm' : 'Nói với Miu'}
             style={{
               width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
               background: isListening
@@ -537,9 +547,11 @@ export default function LessonAiChat({ lesson }) {
             {isListening ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
           <button
+            type="button"
             onClick={() => sendMessage()}
             disabled={!canSend}
             title="Gửi cho Miu!"
+            aria-label="Gửi cho Miu"
             style={{
               width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
               background: canSend

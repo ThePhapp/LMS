@@ -4,6 +4,7 @@ import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { ArrowLeft, Plus, Trash2, CheckCircle, X, Clock, Award, Users, FileText, Settings, BarChart2 } from 'lucide-react';
 import AssignmentViewer from '../components/AssignmentViewer';
+import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
 
 const AssignmentDetail = () => {
   const { id } = useParams();
@@ -13,6 +14,7 @@ const AssignmentDetail = () => {
   const [assignment, setAssignment] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // overview, questions, settings, stats
   
@@ -39,12 +41,11 @@ const AssignmentDetail = () => {
       }
     } catch (err) {
       console.error('Không thể tải bài tập', err);
-      alert('Không thể tải bài tập');
-      navigate(-1);
+      setError(err.response?.data?.message || 'Không thể tải bài tập.');
     } finally {
       setLoading(false);
     }
-  }, [id, navigate, user?.role]);
+  }, [id, user?.role]);
 
   useEffect(() => {
     fetchAssignment();
@@ -93,14 +94,15 @@ const AssignmentDetail = () => {
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /></div>;
+  if (loading) return <PageLoadingState label="Đang tải bài tập" />;
+  if (error) return <ErrorState title="Không thể tải bài tập" detail={error} onRetry={() => { setLoading(true); setError(''); fetchAssignment(); }} />;
   if (!assignment) return null;
 
   const isInstructor = user.role === 'lecturer' || user.role === 'admin';
   const isQuiz = assignment.type === 'quiz';
 
   return (
-    <div className="main-content">
+    <div className="main-content assignment-detail-page">
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1rem' }} onClick={() => navigate(-1)}>
         <ArrowLeft size={16} /> Quay lại
       </button>
