@@ -43,6 +43,7 @@ Ngày cập nhật: 2026-10-11
 | Dashboard/catalog/admin | `80ef755` |
 | Learning/editor/assignment/AI | `d51d818` |
 | QA dependency refresh | `8a90c1c` |
+| Setup, task ledger and final report | `3860a59` |
 
 ## Remaining limitations
 
