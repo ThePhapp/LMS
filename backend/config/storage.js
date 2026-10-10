@@ -1,5 +1,7 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs');
+const fsp = require('fs/promises');
+const path = require('path');
 
 const s3 = new S3Client({
   region: 'auto',
@@ -89,49 +91,150 @@ const MIME_MAP = {
   '.csv': 'text/csv'
 };
 
+class StorageValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'StorageValidationError';
+    this.code = 'STORAGE_PATH_INVALID';
+    this.statusCode = 422;
+  }
+}
+
+function isWithinRoot(rootPath, candidatePath) {
+  const relative = path.relative(rootPath, candidatePath);
+  return relative === '' || (
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+async function validateDirectory(rootRealPath, directoryPath) {
+  const stat = await fsp.lstat(directoryPath);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    throw new StorageValidationError('Package upload contains a non-directory or symbolic-link directory');
+  }
+
+  const realPath = await fsp.realpath(directoryPath);
+  if (!isWithinRoot(rootRealPath, realPath)) {
+    throw new StorageValidationError('Package upload path escapes its source directory');
+  }
+  return realPath;
+}
+
+async function collectRegularFiles(rootRealPath, directoryPath, files = []) {
+  const directoryRealPath = await validateDirectory(rootRealPath, directoryPath);
+  const names = await fsp.readdir(directoryRealPath);
+
+  for (const name of names) {
+    const candidatePath = path.join(directoryRealPath, name);
+    const stat = await fsp.lstat(candidatePath);
+    if (stat.isSymbolicLink()) {
+      throw new StorageValidationError('Package upload contains a symbolic link');
+    }
+
+    const realPath = await fsp.realpath(candidatePath);
+    if (!isWithinRoot(rootRealPath, realPath)) {
+      throw new StorageValidationError('Package upload path escapes its source directory');
+    }
+
+    if (stat.isDirectory()) {
+      await collectRegularFiles(rootRealPath, realPath, files);
+    } else if (stat.isFile()) {
+      files.push({
+        localPath: realPath,
+        relativePath: path.relative(rootRealPath, realPath).split(path.sep).join('/')
+      });
+    } else {
+      throw new StorageValidationError('Package upload contains a non-regular file');
+    }
+  }
+
+  return files;
+}
+
+async function revalidateRegularFile(rootRealPath, file) {
+  const stat = await fsp.lstat(file.localPath);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new StorageValidationError('Package upload contains a non-regular file');
+  }
+
+  const realPath = await fsp.realpath(file.localPath);
+  if (!isWithinRoot(rootRealPath, realPath)) {
+    throw new StorageValidationError('Package upload path escapes its source directory');
+  }
+
+  return { realPath, size: stat.size };
+}
+
 /**
  * Upload an entire local directory to Cloudflare R2 recursively.
  * @param {string} localDir - Path to the local directory
  * @param {string} s3FolderPrefix - The logical folder path in R2 (e.g. 'packages/lesson-123')
- * @returns {string} Public URL of the uploaded folder prefix
+ * @returns {{url: string, keys: string[]}} Public prefix and uploaded keys for rollback
  */
 async function uploadDirectoryToStorage(localDir, s3FolderPrefix) {
-  const fsp = require('fs/promises');
-  const path = require('path');
-  
-  async function getFiles(dir) {
-    const dirents = await fsp.readdir(dir, { withFileTypes: true });
-    const files = await Promise.all(dirents.map((dirent) => {
-      const res = path.resolve(dir, dirent.name);
-      return dirent.isDirectory() ? getFiles(res) : res;
-    }));
-    return Array.prototype.concat(...files);
+  const rootStat = await fsp.lstat(localDir);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+    throw new StorageValidationError('Package upload source must be a regular directory');
   }
 
-  const files = await getFiles(localDir);
+  const rootRealPath = await fsp.realpath(localDir);
+  const files = await collectRegularFiles(rootRealPath, rootRealPath);
+  const uploadedKeys = [];
 
   // Upload in parallel batches (e.g., 20 files at a time to prevent socket exhaustion)
   const BATCH_SIZE = 20;
   for (let i = 0; i < files.length; i += BATCH_SIZE) {
     const batch = files.slice(i, i + BATCH_SIZE);
-    
-    await Promise.all(batch.map(async (filePath) => {
-      const ext = path.extname(filePath).toLowerCase();
+
+    const results = await Promise.allSettled(batch.map(async (file) => {
+      const { realPath, size } = await revalidateRegularFile(rootRealPath, file);
+      const ext = path.extname(realPath).toLowerCase();
       const mimeType = MIME_MAP[ext] || 'application/octet-stream';
-      
-      const relativePath = path.relative(localDir, filePath).split(path.sep).join('/');
-      const key = `${s3FolderPrefix}/${relativePath}`;
-      
+      const key = `${s3FolderPrefix}/${file.relativePath}`;
+
       await s3.send(new PutObjectCommand({
         Bucket: R2_BUCKET,
         Key: key,
-        Body: fs.createReadStream(filePath),
+        Body: fs.createReadStream(realPath),
+        ContentLength: size,
         ContentType: mimeType,
       }));
+
+      return key;
     }));
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') uploadedKeys.push(result.value);
+    }
+
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure) {
+      await deleteStorageKeys(uploadedKeys);
+      throw failure.reason;
+    }
   }
 
-  return `${R2_PUBLIC_URL}/${s3FolderPrefix}`;
+  return {
+    url: `${R2_PUBLIC_URL}/${s3FolderPrefix}`,
+    keys: uploadedKeys,
+  };
 }
 
-module.exports = { uploadToStorage, uploadFileToStorage, deleteFromStorage, uploadDirectoryToStorage };
+async function deleteStorageKeys(keys) {
+  if (!Array.isArray(keys) || keys.length === 0) return;
+  await Promise.allSettled(keys.map((key) => s3.send(new DeleteObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+  }))));
+}
+
+module.exports = {
+  StorageValidationError,
+  uploadToStorage,
+  uploadFileToStorage,
+  deleteFromStorage,
+  deleteStorageKeys,
+  uploadDirectoryToStorage
+};

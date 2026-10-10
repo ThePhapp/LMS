@@ -1,8 +1,15 @@
 const db = require('../config/db');
+const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs').promises;
-const { uploadFileToStorage } = require('../config/storage');
-const { extractPackageFromFile, getPackageUrl, cleanupPackage } = require('../utils/zipHandler');
+const {
+  uploadFileToStorage,
+  uploadDirectoryToStorage,
+  deleteStorageKeys,
+} = require('../config/storage');
+const { extractPackageFromFile, cleanupPackage } = require('../utils/zipHandler');
+
+const tempUploadDir = path.resolve(__dirname, '../uploads/tmp');
 
 function getFileType(originalname) {
   const ext = originalname.split('.').pop().toLowerCase();
@@ -20,9 +27,78 @@ function isZipFile(originalname) {
   return ext === 'zip';
 }
 
+function packageValidationError(result) {
+  const error = new Error(result.error);
+  error.code = result.code;
+  error.statusCode = result.statusCode;
+  return error;
+}
+
+function sendControllerError(res, error) {
+  const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+  const isExpectedClientError = statusCode >= 400 && statusCode < 500;
+  const body = {
+    message: isExpectedClientError ? error.message : 'Unable to save lesson',
+  };
+  if (isExpectedClientError && error.code) body.code = error.code;
+  if (!isExpectedClientError) console.error('Lesson request failed');
+  return res.status(statusCode).json(body);
+}
+
+function getLegacyLocalPackagePath(fileUrl) {
+  if (typeof fileUrl !== 'string' || !fileUrl.startsWith('/packages/')) return null;
+
+  const packageName = fileUrl.slice('/packages/'.length).split('/')[0];
+  if (!packageName || packageName === '.' || packageName === '..') return null;
+
+  const packagesRoot = path.resolve(__dirname, '../public/packages');
+  const packagePath = path.resolve(packagesRoot, packageName);
+  const relativePath = path.relative(packagesRoot, packagePath);
+  if (!relativePath || relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+    return null;
+  }
+  return packagePath;
+}
+
+async function processPackageUpload(uploadedFile) {
+  const tempPackageDir = path.join(tempUploadDir, `lesson-pkg-${randomUUID()}`);
+  let uploadedPackage = null;
+  let operationError = null;
+
+  try {
+    const extractResult = await extractPackageFromFile(uploadedFile.path, tempPackageDir);
+    if (!extractResult.success) throw packageValidationError(extractResult);
+
+    const s3FolderPrefix = `packages/lesson-${randomUUID()}`;
+    uploadedPackage = await uploadDirectoryToStorage(tempPackageDir, s3FolderPrefix);
+    const relativeIndexPath = path
+      .relative(tempPackageDir, extractResult.indexPath)
+      .split(path.sep)
+      .join('/');
+
+    uploadedPackage.indexUrl = `${uploadedPackage.url}/${relativeIndexPath}`;
+  } catch (error) {
+    operationError = error;
+  }
+
+  try {
+    await cleanupPackage(tempPackageDir);
+  } catch (error) {
+    operationError ||= error;
+  }
+
+  if (operationError) {
+    if (uploadedPackage?.keys) await deleteStorageKeys(uploadedPackage.keys);
+    throw operationError;
+  }
+
+  return uploadedPackage;
+}
+
 exports.createLesson = async (req, res) => {
   const { course_id, chapter_id, title, content, video_url, lesson_order, duration } = req.body;
-  let file_url = null, file_name = null, file_type = null, package_url = null;
+  let file_url = null, file_name = null, file_type = null;
+  let packageUpload = null;
 
   try {
     const [course] = await db.query('SELECT lecturer_id FROM courses WHERE id = ?', [course_id]);
@@ -39,39 +115,8 @@ exports.createLesson = async (req, res) => {
       if (isZipFile(originalName)) {
         file_type = 'package';
         file_name = originalName;
-
-        // Import upload function
-        const { uploadDirectoryToStorage } = require('../config/storage');
-
-        // Extract to temporary directory
-        const tempPackageDir = path.join(__dirname, '../uploads/tmp', `lesson-pkg-${Date.now()}`);
-        await fs.mkdir(tempPackageDir, { recursive: true });
-
-        console.log('Extracting package to temporary dir:', tempPackageDir);
-
-        // Extract ZIP
-        const extractResult = await extractPackageFromFile(req.file.path, tempPackageDir);
-        
-        console.log('Extract result:', extractResult);
-        
-        if (!extractResult.success) {
-          await cleanupPackage(tempPackageDir);
-          return res.status(400).json({ message: `Package extraction failed: ${extractResult.error}` });
-        }
-
-        // Upload to Cloudflare R2
-        const s3FolderPrefix = `packages/lesson-${Date.now()}`;
-        console.log(`Uploading package to R2: ${s3FolderPrefix}...`);
-        const r2PrefixUrl = await uploadDirectoryToStorage(tempPackageDir, s3FolderPrefix);
-        
-        // Find relative path to index.html inside the extracted folder
-        const relativeIndexPath = path.relative(tempPackageDir, extractResult.indexPath).split(path.sep).join('/');
-        
-        package_url = `${r2PrefixUrl}/${relativeIndexPath}`;
-        file_url = package_url; // Store full R2 URL as file_url
-        
-        // Clean up temporary local directory
-        await cleanupPackage(tempPackageDir);
+        packageUpload = await processPackageUpload(req.file);
+        file_url = packageUpload.indexUrl;
       } else {
         // Handle regular files
         const storageName = `lesson-${Date.now()}${ext}`;
@@ -91,7 +136,8 @@ exports.createLesson = async (req, res) => {
       lesson_order: lesson_order || 0, duration, package_url: file_type === 'package' ? file_url : null
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (packageUpload?.keys) await deleteStorageKeys(packageUpload.keys);
+    sendControllerError(res, error);
   } finally {
     if (req.file?.path) {
       await fs.unlink(req.file.path).catch(() => {});
@@ -101,6 +147,8 @@ exports.createLesson = async (req, res) => {
 
 exports.updateLesson = async (req, res) => {
   const { title, chapter_id, content, video_url, lesson_order, duration } = req.body;
+  let replacedLocalPackagePath = null;
+  let packageUpload = null;
   try {
     const [lesson] = await db.query('SELECT l.*, c.lecturer_id FROM lessons l JOIN courses c ON l.course_id = c.id WHERE l.id = ?', [req.params.id]);
     if (lesson.length === 0) return res.status(404).json({ message: 'Lesson not found' });
@@ -118,38 +166,10 @@ exports.updateLesson = async (req, res) => {
       if (isZipFile(originalName)) {
         file_type = 'package';
         file_name = originalName;
-
-        try {
-          const { uploadDirectoryToStorage } = require('../config/storage');
-          
-          // Clean up old package if exists (local only for now)
-          if (lesson[0].file_type === 'package' && lesson[0].file_url && lesson[0].file_url.startsWith('/packages/')) {
-            await cleanupPackage(path.join(__dirname, '../public/packages', lesson[0].file_url.split('/packages/')[1].split('/')[0]));
-          }
-
-          // Create new extraction directory
-          const tempPackageDir = path.join(__dirname, '../uploads/tmp', `lesson-pkg-${Date.now()}`);
-          await fs.mkdir(tempPackageDir, { recursive: true });
-
-          // Extract ZIP
-          const extractResult = await extractPackageFromFile(req.file.path, tempPackageDir);
-          
-          if (!extractResult.success) {
-            await cleanupPackage(tempPackageDir);
-            return res.status(400).json({ message: `Package extraction failed: ${extractResult.error}` });
-          }
-
-          // Upload to Cloudflare R2
-          const s3FolderPrefix = `packages/lesson-${Date.now()}`;
-          const r2PrefixUrl = await uploadDirectoryToStorage(tempPackageDir, s3FolderPrefix);
-          
-          const relativeIndexPath = path.relative(tempPackageDir, extractResult.indexPath).split(path.sep).join('/');
-          file_url = `${r2PrefixUrl}/${relativeIndexPath}`;
-          
-          // Clean up temporary local directory
-          await cleanupPackage(tempPackageDir);
-        } catch (error) {
-          return res.status(500).json({ message: `Failed to process package: ${error.message}` });
+        packageUpload = await processPackageUpload(req.file);
+        file_url = packageUpload.indexUrl;
+        if (lesson[0].file_type === 'package') {
+          replacedLocalPackagePath = getLegacyLocalPackagePath(lesson[0].file_url);
         }
       } else {
         // Handle regular files
@@ -173,9 +193,15 @@ exports.updateLesson = async (req, res) => {
         req.params.id
       ]
     );
+    if (replacedLocalPackagePath) {
+      await cleanupPackage(replacedLocalPackagePath).catch((error) => {
+        console.error('Error cleaning up replaced local package:', error);
+      });
+    }
     res.json({ message: 'Lesson updated', package_url: file_type === 'package' ? file_url : null });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (packageUpload?.keys) await deleteStorageKeys(packageUpload.keys);
+    sendControllerError(res, error);
   } finally {
     if (req.file?.path) {
       await fs.unlink(req.file.path).catch(() => {});
@@ -194,11 +220,8 @@ exports.deleteLesson = async (req, res) => {
     // Clean up package folder if it's a package
     if (lesson[0].file_type === 'package' && lesson[0].file_url) {
       try {
-        const packageName = lesson[0].file_url.split('/packages/')[1]?.split('/')[0];
-        if (packageName) {
-          const packagePath = path.join(__dirname, '../public/packages', packageName);
-          await cleanupPackage(packagePath);
-        }
+        const packagePath = getLegacyLocalPackagePath(lesson[0].file_url);
+        if (packagePath) await cleanupPackage(packagePath);
       } catch (error) {
         console.error('Error cleaning up package:', error);
         // Continue with lesson deletion even if cleanup fails
