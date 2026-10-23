@@ -1,41 +1,64 @@
-import React, { useCallback, useEffect, useState, useContext } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen, CircleDollarSign, Edit3, Eye, Plus, Trash2, Users } from 'lucide-react';
 import api from '../services/api';
-import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, Edit, Trash2, BarChart2, Book, Users, Star, Eye, GraduationCap, Search, Filter } from 'lucide-react';
 import { canManageCourse } from '../routing/access';
+import { EmptyState, ErrorState, PageLoadingState } from '../components/ui/Feedback';
+import {
+  CourseCard,
+  FilterTabs,
+  MetricCard,
+  PageHeader,
+  SearchField,
+  SectionHeader,
+  SelectMenu,
+} from '../components/ui/AppUI';
+import { formatCurrency } from '../components/ui/utils';
 
-const CATEGORY_LABELS = { Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên & XH', Science: 'Khoa học', HistoryGeography: 'Lịch sử và địa lý', Music: 'Âm nhạc', Arts: 'Mỹ thuật' };
-const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
+const CATEGORY_OPTIONS = [
+  { value: 'All', label: 'Tất cả môn học' },
+  { value: 'Math', label: 'Toán' },
+  { value: 'Vietnamese', label: 'Tiếng Việt' },
+  { value: 'English', label: 'Tiếng Anh' },
+  { value: 'Science', label: 'Khoa học' },
+  { value: 'HistoryGeography', label: 'Lịch sử và địa lý' },
+  { value: 'Arts', label: 'Mỹ thuật' },
+];
 
-const InstructorDashboard = () => {
+const SCOPE_OPTIONS = [
+  { value: 'my_courses', label: 'Của tôi' },
+  { value: 'public_courses', label: 'Giảng viên khác' },
+  { value: 'all', label: 'Tất cả' },
+];
+
+export default function InstructorDashboard() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('my_courses');
+  const [error, setError] = useState('');
+  const [scope, setScope] = useState('my_courses');
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [category, setCategory] = useState('All');
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const res = await api.get('/courses', { params: { search: searchQuery, category: categoryFilter } });
-      let filtered = res.data;
+      const response = await api.get('/courses', { params: { search: searchQuery, category } });
+      let nextCourses = response.data || [];
       if (user?.role !== 'admin') {
-        if (filterType === 'my_courses') {
-          filtered = res.data.filter(c => canManageCourse(user, c));
-        } else if (filterType === 'public_courses') {
-          filtered = res.data.filter(c => !canManageCourse(user, c));
-        }
+        if (scope === 'my_courses') nextCourses = nextCourses.filter((course) => canManageCourse(user, course));
+        if (scope === 'public_courses') nextCourses = nextCourses.filter((course) => !canManageCourse(user, course));
       }
-      setCourses(filtered);
-    } catch (error) {
-      console.error('Không thể tải danh sách khóa học', error);
+      setCourses(nextCourses);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Không thể tải danh sách khóa học.');
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
-  }, [categoryFilter, filterType, searchQuery, user]);
+  }, [category, scope, searchQuery, user]);
 
   useEffect(() => {
     if (user && user.role !== 'lecturer' && user.role !== 'admin') {
@@ -45,167 +68,79 @@ const InstructorDashboard = () => {
     fetchCourses();
   }, [fetchCourses, navigate, user]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchCourses();
-  };
+  const totals = useMemo(() => ({
+    students: courses.reduce((sum, course) => sum + Number(course.student_count || 0), 0),
+    lessons: courses.reduce((sum, course) => sum + Number(course.lesson_count || 0), 0),
+    revenue: courses.reduce((sum, course) => sum + Number(course.student_count || 0) * Number(course.price || 0), 0),
+  }), [courses]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa khóa học này? Mọi dữ liệu sẽ bị mất.')) return;
+  const handleDelete = async (courseId) => {
+    if (!window.confirm('Xóa khóa học này? Mọi dữ liệu liên quan sẽ không thể khôi phục.')) return;
     try {
-      await api.delete(`/courses/${id}`);
+      await api.delete(`/courses/${courseId}`);
       fetchCourses();
-    } catch {
-      alert('Lỗi xóa khóa học');
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Không thể xóa khóa học.');
     }
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /></div>;
-
-  const totalStudents = courses.reduce((acc, c) => acc + (parseInt(c.student_count) || 0), 0);
-  const totalRevenue = courses.reduce((acc, c) => acc + ((parseInt(c.student_count) || 0) * (parseFloat(c.price) || 0)), 0);
-
   return (
-    <div className="main-content">
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="page-title">Quản lý giảng dạy</h1>
-          <p className="page-subtitle">Xin chào, <strong>{user?.name}</strong> — Quản lý và theo dõi các khóa học của bạn</p>
-        </div>
-        <Link to="/instructor/course/create" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-          <Plus size={16} /> Tạo khóa học mới
-        </Link>
+    <div className="app-page instructor-page">
+      <PageHeader
+        eyebrow="Không gian giảng dạy"
+        title="Quản lý khóa học"
+        description="Theo dõi quy mô lớp học và mở nhanh công việc cần xử lý."
+        action={<Link to="/instructor/course/create" className="btn btn-primary"><Plus size={16} aria-hidden="true" />Tạo khóa học</Link>}
+      />
+
+      <div className="metric-grid metric-grid-four">
+        <MetricCard icon={BookOpen} label="Khóa học" value={courses.length} detail="trong phạm vi đang xem" tone="indigo" />
+        <MetricCard icon={Users} label="Học viên" value={totals.students} detail="lượt đăng ký" tone="teal" />
+        <MetricCard icon={Edit3} label="Bài giảng" value={totals.lessons} detail="nội dung đã tạo" tone="violet" />
+        <MetricCard icon={CircleDollarSign} label="Doanh thu ước tính" value={formatCurrency(totals.revenue)} tone="amber" />
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}><Book size={22} /></div>
-          <div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{courses.length}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>Khóa học đã tạo</div>
+      <section className="app-section">
+        <SectionHeader title="Danh sách khóa học" description={`${courses.length} khóa học trong kết quả hiện tại.`} />
+        <div className="list-toolbar">
+          <FilterTabs label="Phạm vi khóa học" value={scope} options={SCOPE_OPTIONS} onChange={setScope} />
+          <div className="list-toolbar-controls">
+            <SearchField value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Tìm tên khóa học" label="Tìm khóa học" />
+            <SelectMenu label="Lọc môn học" value={category} options={CATEGORY_OPTIONS} onChange={setCategory} />
           </div>
         </div>
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ca8a04', flexShrink: 0 }}><Users size={22} /></div>
-          <div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{totalStudents}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>Tổng học sinh</div>
+
+        {loading ? (
+          <PageLoadingState label="Đang tải khóa học" />
+        ) : error ? (
+          <ErrorState title="Không thể tải khóa học" detail={error} onRetry={fetchCourses} />
+        ) : courses.length === 0 ? (
+          <EmptyState page action={scope === 'my_courses' ? <Link to="/instructor/course/create" className="btn btn-primary">Tạo khóa học</Link> : null}>
+            <h3>Chưa có khóa học phù hợp</h3>
+            <p>Thử thay đổi phạm vi, môn học hoặc từ khóa tìm kiếm.</p>
+          </EmptyState>
+        ) : (
+          <div className="course-grid instructor-course-grid">
+            {courses.map((course) => {
+              const manageable = canManageCourse(user, course);
+              return (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  footer={(
+                    <div className="course-management-actions">
+                      <Link to={`/courses/${course.id}`} className="btn btn-ghost"><Eye size={15} aria-hidden="true" />Xem</Link>
+                      {manageable && <Link to={`/instructor/course/${course.id}/students`} className="btn btn-ghost"><Users size={15} aria-hidden="true" />Học viên</Link>}
+                      {manageable && <Link to={`/instructor/course/${course.id}/edit`} className="btn btn-secondary"><Edit3 size={15} aria-hidden="true" />Chỉnh sửa</Link>}
+                      {manageable && <button type="button" className="btn btn-danger icon-button" onClick={() => handleDelete(course.id)} aria-label={`Xóa khóa học ${course.title}`}><Trash2 size={15} aria-hidden="true" /></button>}
+                    </div>
+                  )}
+                />
+              );
+            })}
           </div>
-        </div>
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}><BarChart2 size={22} /></div>
-          <div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>${totalRevenue.toFixed(0)}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>Doanh thu ước tính</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Course Cards */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Danh sách khóa học ({courses.length})</h3>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Tên khóa học, giáo viên..." 
-              style={{ paddingLeft: '2rem', width: '220px' }}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <select className="form-select" value={filterType} onChange={e => setFilterType(e.target.value)} style={{ width: '180px' }}>
-            <option value="my_courses">Khóa học của tôi</option>
-            <option value="public_courses">Khóa học của GV khác</option>
-            <option value="all">Tất cả khóa học</option>
-          </select>
-          <select className="form-select" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ width: '150px' }}>
-            <option value="All">Tất cả môn học</option>
-            {Object.keys(CATEGORY_LABELS).map(k => (
-              <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>
-            ))}
-          </select>
-          <button type="submit" className="btn btn-primary">Tìm kiếm</button>
-        </form>
-      </div>
-
-      {courses.length === 0 ? (
-        <div className="card" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <GraduationCap size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-          <p style={{ marginBottom: '1rem' }}>Chưa có khóa học nào.</p>
-          <Link to="/instructor/course/create" className="btn btn-primary"><Plus size={16} /> Tạo khóa học đầu tiên</Link>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-          {courses.map(course => (
-            <div key={course.id} className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Thumbnail */}
-              <div style={{ height: 140, background: 'var(--surface-2)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
-                {course.thumbnail_url
-                  ? <img src={assetUrl(course.thumbnail_url)} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><GraduationCap size={40} /></div>
-                }
-                <span className="badge badge-primary" style={{ position: 'absolute', top: 8, left: 8, fontSize: '0.75rem' }}>
-                  {CATEGORY_LABELS[course.category] || course.category}
-                </span>
-                {course.level && (
-                  <span className="badge badge-purple" style={{ position: 'absolute', top: 8, right: 8, fontSize: '0.75rem' }}>
-                    {LEVEL_LABELS[course.level] || course.level}
-                  </span>
-                )}
-              </div>
-
-              {/* Body */}
-              <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <h4 style={{ fontWeight: 700, fontSize: '1rem', margin: 0, lineHeight: 1.4 }}>
-                  <Link to={`/courses/${course.id}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>{course.title}</Link>
-                </h4>
-
-                {/* Lecturer */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  <GraduationCap size={13} />
-                  <span>{course.lecturer_name || user?.name}</span>
-                </div>
-
-                {/* Stats row */}
-                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.83rem', color: 'var(--text-muted)', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={13} /> {course.student_count || 0} học sinh</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#eab308' }}><Star size={13} fill="currentColor" /><span style={{ color: 'var(--text-muted)' }}>{parseFloat(course.rating || 0).toFixed(1)}</span></span>
-                  <span style={{ marginLeft: 'auto', fontWeight: 600, color: course.price > 0 ? 'var(--primary)' : '#16a34a' }}>
-                    {course.price > 0 ? `$${course.price}` : 'Mở đăng ký'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
-                <Link to={`/courses/${course.id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Xem">
-                  <Eye size={14} /> Xem
-                </Link>
-                {canManageCourse(user, course) && (
-                  <>
-                    <Link to={`/instructor/course/${course.id}/students`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Học sinh">
-                      <Users size={14} /> Học sinh
-                    </Link>
-                    <Link to={`/instructor/course/${course.id}/edit`} className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <Edit size={14} /> Sửa
-                    </Link>
-                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)', padding: '0.4rem 0.6rem' }} onClick={() => handleDelete(course.id)} title="Xóa">
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
-};
-
-export default InstructorDashboard;
+}
