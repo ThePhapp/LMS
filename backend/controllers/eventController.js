@@ -62,6 +62,16 @@ function validateEventInput(body = {}, { partial = false } = {}) {
     if (result.meeting_link && result.meeting_link.length > 500) {
       return { error: 'Meeting link must be at most 500 characters' };
     }
+    if (result.meeting_link) {
+      try {
+        const url = new URL(result.meeting_link);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          return { error: 'Meeting link must use HTTP or HTTPS' };
+        }
+      } catch (_) {
+        return { error: 'Meeting link must be a valid absolute URL' };
+      }
+    }
   }
 
   return result;

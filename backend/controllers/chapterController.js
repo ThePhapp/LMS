@@ -1,60 +1,89 @@
 const db = require('../config/db');
+const {
+  CourseAccessError,
+  parseId,
+  requireCourseOwner,
+  sendControllerError,
+} = require('../services/courseAccess');
+
+function chapterTitle(value) {
+  const title = typeof value === 'string' ? value.trim() : '';
+  if (!title || title.length > 255) {
+    throw new CourseAccessError(400, 'Title is required and must be at most 255 characters');
+  }
+  return title;
+}
+
+function chapterOrder(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const order = Number(value);
+  if (!Number.isInteger(order) || order < 0) {
+    throw new CourseAccessError(400, 'Chapter order must be a non-negative integer');
+  }
+  return order;
+}
+
+async function resolveChapter(chapterId) {
+  const id = parseId(chapterId, 'Chapter ID');
+  const [chapters] = await db.query(
+    'SELECT id, course_id, title, chapter_order FROM chapters WHERE id = ?',
+    [id],
+  );
+  if (!chapters.length) throw new CourseAccessError(404, 'Chapter not found');
+  return chapters[0];
+}
 
 exports.createChapter = async (req, res) => {
-  const { course_id, title, chapter_order } = req.body;
   try {
-    // Quick auth check - owner only, or admin
-    const [course] = await db.query('SELECT * FROM courses WHERE id = ?', [course_id]);
-    if (course.length === 0) return res.status(404).json({ message: 'Course not found' });
-    if (course[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
+    const course = await requireCourseOwner(db, req.body?.course_id, req.user);
+    const title = chapterTitle(req.body?.title);
+    const order = chapterOrder(req.body?.chapter_order);
     const [result] = await db.query(
       'INSERT INTO chapters (course_id, title, chapter_order) VALUES (?, ?, ?) RETURNING id',
-      [course_id, title, chapter_order || 0]
+      [course.id, title, order],
     );
-    res.status(201).json({ id: result[0].id, course_id, title, chapter_order: chapter_order || 0 });
+    return res.status(201).json({
+      id: result[0].id,
+      course_id: course.id,
+      title,
+      chapter_order: order,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
 exports.updateChapter = async (req, res) => {
-  const { title, chapter_order } = req.body;
   try {
-    const [chapter] = await db.query('SELECT * FROM chapters WHERE id = ?', [req.params.id]);
-    if (chapter.length === 0) return res.status(404).json({ message: 'Chapter not found' });
-
-    // auth check
-    const [course] = await db.query('SELECT * FROM courses WHERE id = ?', [chapter[0].course_id]);
-    if (course[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
+    const chapter = await resolveChapter(req.params.id);
+    await requireCourseOwner(db, chapter.course_id, req.user);
+    const title = req.body?.title === undefined
+      ? chapter.title
+      : chapterTitle(req.body.title);
+    const order = chapterOrder(req.body?.chapter_order, chapter.chapter_order);
 
     await db.query(
-      'UPDATE chapters SET title=?, chapter_order=? WHERE id=?',
-      [title || chapter[0].title, chapter_order ?? chapter[0].chapter_order, req.params.id]
+      'UPDATE chapters SET title = ?, chapter_order = ? WHERE id = ?',
+      [title, order, chapter.id],
     );
-    res.json({ message: 'Chapter updated' });
+    return res.json({
+      message: 'Chapter updated',
+      id: chapter.id,
+      title,
+      chapter_order: order,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
 
 exports.deleteChapter = async (req, res) => {
   try {
-    const [chapter] = await db.query('SELECT * FROM chapters WHERE id = ?', [req.params.id]);
-    if (chapter.length === 0) return res.status(404).json({ message: 'Chapter not found' });
-
-    const [course] = await db.query('SELECT * FROM courses WHERE id = ?', [chapter[0].course_id]);
-    if (course[0].lecturer_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    await db.query('DELETE FROM chapters WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Chapter deleted' });
+    const chapter = await resolveChapter(req.params.id);
+    await requireCourseOwner(db, chapter.course_id, req.user);
+    await db.query('DELETE FROM chapters WHERE id = ?', [chapter.id]);
+    return res.json({ message: 'Chapter deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendControllerError(res, error);
   }
 };
