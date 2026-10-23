@@ -54,7 +54,7 @@ const Dashboard = () => {
             {user?.role === 'student' ? 'Tiếp tục hành trình học tập của bạn hôm nay.' : 'Quản lý khóa học và đồng hành cùng học viên.'}
           </p>
         </div>
-        <Link to="/courses" className="btn dashboard-hero-action">
+        <Link to={user?.role === 'student' ? '/courses' : '/instructor/course/create'} className="btn dashboard-hero-action">
           {user?.role === 'student' ? 'Khám phá khóa học' : 'Tạo khóa học'}
         </Link>
       </div>

@@ -5,6 +5,7 @@ import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { PlayCircle, FileText, FileVideo, CheckCircle2, Users, BookOpen, GraduationCap, Star, ArrowLeft, Clock, Award, Target, Layers } from 'lucide-react';
 import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
+import { canManageCourse } from '../routing/access';
 
 function getYoutubeId(url) {
   if (!url) return null;
@@ -65,7 +66,7 @@ const CourseDetail = () => {
   if (error) return <ErrorState title="Không thể tải khóa học" detail={error} onRetry={() => { setLoading(true); setError(''); fetchCourse(); }} />;
   if (!course) return null;
 
-  const isOwner = user?.role === 'lecturer' && user?.id === course.lecturer_id;
+  const canManage = canManageCourse(user, course);
   const lessons = course.lessons || [];
   const firstVideoLesson = lessons.find(l => l.video_url || l.file_type === 'video');
   const ytId = firstVideoLesson ? getYoutubeId(firstVideoLesson.video_url) : null;
@@ -241,25 +242,27 @@ const CourseDetail = () => {
               </div>
 
               {/* Action Buttons */}
-              {isOwner || user?.role === 'admin' || user?.role === 'lecturer' ? (
+              {canManage ? (
                 <>
                   <Link to={`/courses/${id}/learn`} className="btn btn-primary btn-lg btn-block" style={{ marginBottom: '0.75rem', borderRadius: '12px' }}>
                     <BookOpen size={18} /> Xem bài học
                   </Link>
-                  {(isOwner || user?.role === 'admin') && (
-                    <Link to={`/instructor/course/${id}/edit`} className="btn btn-secondary btn-lg btn-block" style={{ marginBottom: '0.5rem', borderRadius: '12px' }}>
-                      Chỉnh sửa khóa học
-                    </Link>
-                  )}
+                  <Link to={`/instructor/course/${id}/edit`} className="btn btn-secondary btn-lg btn-block" style={{ marginBottom: '0.5rem', borderRadius: '12px' }}>
+                    Chỉnh sửa khóa học
+                  </Link>
                 </>
-              ) : isEnrolled ? (
+              ) : user?.role === 'student' && isEnrolled ? (
                 <Link to={`/courses/${id}/learn`} className="btn btn-primary btn-lg btn-block" style={{ borderRadius: '12px' }}>
                   <BookOpen size={18} /> Tiếp tục học
                 </Link>
-              ) : (
+              ) : user?.role === 'student' ? (
                 <button className="btn btn-primary btn-lg btn-block" style={{ borderRadius: '12px' }} onClick={handleEnroll}>
                   <GraduationCap size={18} /> Đăng ký ngay
                 </button>
+              ) : (
+                <Link to="/courses" className="btn btn-secondary btn-lg btn-block" style={{ borderRadius: '12px' }}>
+                  <ArrowLeft size={18} /> Quay lại danh mục
+                </Link>
               )}
 
               {/* Includes */}

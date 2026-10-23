@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
+import { canManageCourse } from '../routing/access';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalIcon, Clock, FileText, 
   Video, Link2, X, Plus 
@@ -74,7 +75,7 @@ const Timetable = () => {
   const fetchCourses = useCallback(async () => {
     try {
       const res = await api.get('/courses');
-      const myCourses = user?.role === 'admin' ? res.data : res.data.filter(c => c.lecturer_id === user?.id);
+      const myCourses = res.data.filter(c => canManageCourse(user, c));
       setCourses(myCourses);
       const map = {};
       myCourses.forEach(c => map[c.id] = true);
@@ -85,7 +86,7 @@ const Timetable = () => {
     } catch (error) {
       console.error('Không thể tải khóa học cho thời khóa biểu', error);
     }
-  }, [user?.id, user?.role]);
+  }, [user]);
 
   useEffect(() => {
     fetchEvents();

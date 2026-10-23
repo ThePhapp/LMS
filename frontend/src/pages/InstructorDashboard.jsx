@@ -4,6 +4,7 @@ import api from '../services/api';
 import { assetUrl } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { Plus, Edit, Trash2, BarChart2, Book, Users, Star, Eye, GraduationCap, Search, Filter } from 'lucide-react';
+import { canManageCourse } from '../routing/access';
 
 const CATEGORY_LABELS = { Math: 'Toán', Vietnamese: 'Tiếng Việt', English: 'Tiếng Anh', Ethics: 'Đạo đức', Nature: 'Tự nhiên & XH', Science: 'Khoa học', HistoryGeography: 'Lịch sử và địa lý', Music: 'Âm nhạc', Arts: 'Mỹ thuật' };
 const LEVEL_LABELS = { Semester1: 'Học kỳ 1', Semester2: 'Học kỳ 2' };
@@ -24,9 +25,9 @@ const InstructorDashboard = () => {
       let filtered = res.data;
       if (user?.role !== 'admin') {
         if (filterType === 'my_courses') {
-          filtered = res.data.filter(c => c.lecturer_id === user?.id);
+          filtered = res.data.filter(c => canManageCourse(user, c));
         } else if (filterType === 'public_courses') {
-          filtered = res.data.filter(c => c.lecturer_id !== user?.id);
+          filtered = res.data.filter(c => !canManageCourse(user, c));
         }
       }
       setCourses(filtered);
@@ -34,7 +35,7 @@ const InstructorDashboard = () => {
       console.error('Không thể tải danh sách khóa học', error);
     }
     finally { setLoading(false); }
-  }, [categoryFilter, filterType, searchQuery, user?.id, user?.role]);
+  }, [categoryFilter, filterType, searchQuery, user]);
 
   useEffect(() => {
     if (user && user.role !== 'lecturer' && user.role !== 'admin') {
@@ -185,7 +186,7 @@ const InstructorDashboard = () => {
                 <Link to={`/courses/${course.id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Xem">
                   <Eye size={14} /> Xem
                 </Link>
-                {(course.lecturer_id === user?.id || user?.role === 'admin') && (
+                {canManageCourse(user, course) && (
                   <>
                     <Link to={`/instructor/course/${course.id}/students`} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 5 }} title="Học sinh">
                       <Users size={14} /> Học sinh
