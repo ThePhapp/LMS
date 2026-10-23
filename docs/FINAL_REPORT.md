@@ -1,6 +1,6 @@
 # Final report — LMS hardening và UI overhaul
 
-Ngày cập nhật: 2026-10-11
+Ngày cập nhật: 2026-10-23
 
 ## Kết quả
 
@@ -13,18 +13,23 @@ Ngày cập nhật: 2026-10-11
 - Express app factory có security headers, CORS allowlist, centralized error shape, body/request/rate limits.
 - PostgreSQL migrations canonical, additive/idempotent và có checksum/advisory lock.
 - Frontend session/role guards, lazy routes, accessible auth forms, responsive shell, dashboard/catalog/admin, learning/editor/assignment/viewer/AI states đã được chuẩn hóa.
-- Production dependency audit sau lockfile refresh: 0 vulnerability với `--omit=dev` ở cả backend và frontend.
+- Authoring API validate chapter/lesson/event nhất quán, chặn URL scheme nguy hiểm và cho phép xóa đúng các trường lesson tùy chọn.
+- Admin course deletion dùng chung luồng cleanup thumbnail, lesson package/file và submission file; response lỗi không lộ chi tiết database.
+- Student assignment list đã bỏ N+1 submission query và dùng một truy vấn batch cho mỗi request.
+- UI course actions dùng cùng ownership rule với backend; CTA giảng viên và avatar preview lifecycle đã được sửa.
+- Full dependency audit hiện có 0 vulnerability ở cả backend và frontend.
+- GitHub Actions chạy test/lint/build/audit trên mọi push và pull request.
 
 ## Verification ledger
 
 | Check | Kết quả |
 | --- | --- |
-| Backend tests | PASS — 69/69 |
-| Frontend tests | PASS — 4/4 |
+| Backend tests | PASS — 80/80 |
+| Frontend tests | PASS — 5/5 |
 | Frontend ESLint | PASS — 0 errors, 0 warnings |
 | Frontend production build | PASS — Vite build, lazy route chunks |
 | Backend JS syntax | PASS — `node --check` |
-| Production dependency audit | PASS — backend/frontend `npm audit --omit=dev` |
+| Full dependency audit | PASS — backend/frontend `npm audit`, 0 vulnerability |
 | `/ping` live smoke | PASS — `{ "status": "ok" }` |
 | UI mock smoke | PASS — auth/dashboard/admin/learning/editor/assignment, desktop + 375px |
 | Live DB integration | BLOCKED — tenant DNS/credentials unavailable in this environment |
@@ -44,11 +49,17 @@ Ngày cập nhật: 2026-10-11
 | Learning/editor/assignment/AI | `d51d818` |
 | QA dependency refresh | `8a90c1c` |
 | Setup, task ledger and final report | `3860a59` |
+| Authoring validation và URL safety | `371c366` |
+| Admin cleanup và stats hardening | `8fd8f55` |
+| Assignment query batching | `cc5f621` |
+| UI ownership consistency | `80cd752` |
+| Full dependency refresh | `da14a5e` |
+| Continuous quality gate | `72cc3dd` |
 
 ## Remaining limitations
 
 1. Live DB migration and real provider integration vẫn cần chạy trong environment có PostgreSQL tenant, R2 và Gemini credentials hợp lệ.
 2. Một số màn secondary (instructor roster/gradebook/timetable/profile) chưa có fixture E2E đầy đủ; lint/build và route code đã được kiểm tra nhưng không gắn nhãn live-flow PASS.
-3. Dev-only dependency audit vẫn có advisories trong toolchain; production runtime audit đã sạch với `--omit=dev`.
+3. Payment confirmation cho khóa học trả phí vẫn cần tích hợp với payment provider trước khi có thể self-enroll.
 
 Không có production database reset, destructive migration, deploy hoặc push nào được thực hiện.
