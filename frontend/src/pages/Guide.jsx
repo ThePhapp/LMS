@@ -116,7 +116,7 @@ const sections = [
     title: 'Dành cho Giáo viên',
     steps: [
       { 
-        title: 'Instructor Dashboard', 
+        title: 'Trang quản lý giảng viên',
         content: 'Sau khi đăng nhập với tài khoản Giáo viên, vào Dashboard để xem tổng quan: số khóa học, học viên, và doanh thu ước tính.'
       },
       { 

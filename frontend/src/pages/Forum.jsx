@@ -47,7 +47,7 @@ const Forum = () => {
       setNewTopic({ title: '', content: '' });
       fetchTopics();
     } catch {
-      alert('Failed to create topic');
+      alert('Không thể tạo chủ đề');
     }
   };
 
@@ -59,7 +59,7 @@ const Forum = () => {
       setReplyContent('');
       loadTopic(activeTopic.id); // reload replies
     } catch {
-      alert('Failed to reply');
+      alert('Không thể gửi phản hồi');
     }
   };
 
@@ -70,11 +70,11 @@ const Forum = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <div>
               <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Community Forum</h1>
-              <p style={{ color: 'var(--text-muted)' }}>Discuss course topics and ask questions.</p>
+              <p style={{ color: 'var(--text-muted)' }}>Trao đổi nội dung khóa học và đặt câu hỏi.</p>
             </div>
             {user && (
               <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                <Plus size={16} /> New Topic
+                <Plus size={16} /> Tạo chủ đề
               </button>
             )}
           </div>
@@ -88,7 +88,7 @@ const Forum = () => {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 4, color: 'var(--primary)' }}>{t.title}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Posted by {t.author_name} {t.course_title && <span className="badge badge-secondary" style={{ marginLeft: 6 }}>{t.course_title}</span>}
+                    Đăng bởi {t.author_name} {t.course_title && <span className="badge badge-secondary" style={{ marginLeft: 6 }}>{t.course_title}</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -97,19 +97,19 @@ const Forum = () => {
                 </div>
               </div>
             ))}
-            {topics.length === 0 && <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No topics available. Be the first to start a conversation!</div>}
+            {topics.length === 0 && <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Chưa có chủ đề nào. Hãy bắt đầu cuộc trò chuyện đầu tiên!</div>}
           </div>
         </>
       ) : (
         <>
           <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1rem' }} onClick={() => { setActiveTopic(null); fetchTopics(); }}>
-            <ArrowLeft size={15} /> Back to Forum
+            <ArrowLeft size={15} /> Quay lại diễn đàn
           </button>
           
           <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>{activeTopic.title}</h1>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-              Posted by <span style={{ fontWeight: 600 }}>{activeTopic.author_name}</span> on {new Date(activeTopic.created_at).toLocaleString()}
+              Đăng bởi <span style={{ fontWeight: 600 }}>{activeTopic.author_name}</span> lúc {new Date(activeTopic.created_at).toLocaleString()}
             </div>
             <div style={{ fontSize: '1rem', lineHeight: 1.6 }}>{activeTopic.content}</div>
           </div>
@@ -130,12 +130,12 @@ const Forum = () => {
 
           {user ? (
             <form onSubmit={handleReply} style={{ marginTop: '1rem' }}>
-              <textarea className="form-textarea" rows="4" required placeholder="Write a reply..."
+              <textarea className="form-textarea" rows="4" required placeholder="Viết phản hồi..."
                 value={replyContent} onChange={e => setReplyContent(e.target.value)} />
-              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>Post Reply</button>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>Gửi phản hồi</button>
             </form>
           ) : (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Please log in to reply.</div>
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Vui lòng đăng nhập để phản hồi.</div>
           )}
         </>
       )}
@@ -144,27 +144,27 @@ const Forum = () => {
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: 500 }}>
             <div className="modal-header">
-              <h2 className="modal-title">Create New Topic</h2>
+              <h2 className="modal-title">Tạo chủ đề mới</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowAddModal(false)}>✕</button>
             </div>
             <form onSubmit={handleCreateTopic}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label className="form-label">Topic Title *</label>
+                  <label className="form-label">Tiêu đề *</label>
                   <input type="text" className="form-input" required
                     value={newTopic.title} onChange={e => setNewTopic({ ...newTopic, title: e.target.value })}
-                    placeholder="What is this discussion about?" />
+                    placeholder="Chủ đề này nói về điều gì?" />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Content *</label>
+                  <label className="form-label">Nội dung *</label>
                   <textarea className="form-textarea" rows="5" required
                     value={newTopic.content} onChange={e => setNewTopic({ ...newTopic, content: e.target.value })}
-                    placeholder="Provide details..." />
+                    placeholder="Nhập nội dung chi tiết..." />
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Topic</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Hủy</button>
+                <button type="submit" className="btn btn-primary">Tạo chủ đề</button>
               </div>
             </form>
           </div>
