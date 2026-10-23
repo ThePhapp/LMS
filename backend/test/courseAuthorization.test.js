@@ -244,3 +244,54 @@ test('paid courses cannot be self-enrolled without payment confirmation', async 
   assert.match(res.body.message, /payment is required/i);
   assert.equal(calls.length, 1);
 });
+
+test('admin course deletion removes private and public storage assets after the database row', async () => {
+  const queries = [];
+  const deletedFiles = [];
+  const deletedPrefixes = [];
+  const db = {
+    async query(sql) {
+      queries.push(sql.replace(/\s+/g, ' ').trim());
+      if (sql.startsWith('SELECT * FROM courses')) {
+        return [[{ id: 12, lecturer_id: 4, thumbnail_url: 'https://cdn.test/thumb.png' }]];
+      }
+      if (sql.startsWith('SELECT file_url, file_type FROM lessons')) {
+        return [[
+          { file_url: 'r2://lesson-files/notes.pdf', file_type: 'pdf' },
+          { file_url: 'r2://packages/lesson-abc/index.html', file_type: 'package' },
+        ]];
+      }
+      if (/SELECT s\.file_url FROM assignment_submissions/.test(sql)) {
+        return [[{ file_url: 'r2://submission-files/work.pdf' }]];
+      }
+      return [[]];
+    },
+  };
+  const { deleteCourse } = loadModule(courseControllerPath, {
+    '../config/db': db,
+    '../config/storage': {
+      deleteStoredFile: async (locator) => { deletedFiles.push(locator); },
+      deleteStoragePrefix: async (prefix, options) => { deletedPrefixes.push({ prefix, options }); },
+      packagePrefixFromLocator: () => 'packages/lesson-abc/',
+      uploadToStorage: async () => 'unused',
+    },
+  });
+  const res = createResponse();
+
+  await deleteCourse({
+    params: { id: '12' },
+    user: { id: 1, role: 'admin' },
+  }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.ok(queries.some((sql) => sql === 'DELETE FROM courses WHERE id = ?'));
+  assert.deepEqual(new Set(deletedFiles), new Set([
+    'https://cdn.test/thumb.png',
+    'r2://lesson-files/notes.pdf',
+    'r2://submission-files/work.pdf',
+  ]));
+  assert.deepEqual(deletedPrefixes, [{
+    prefix: 'packages/lesson-abc/',
+    options: { privateBucket: true },
+  }]);
+});

@@ -1,26 +1,32 @@
 const db = require('../config/db');
 
+function sendAdminError(res) {
+  return res.status(500).json({ message: 'Unable to load administration data' });
+}
+
 exports.getDashboardStats = async (req, res) => {
   try {
-    const [usersCount] = await db.query('SELECT COUNT(*) as count FROM users');
-    const [coursesCount] = await db.query('SELECT COUNT(*) as count FROM courses');
-    const [enrollmentsCount] = await db.query('SELECT COUNT(*) as count FROM enrollments');
-    
-    // Get list of all users, excluding passwords
-    const [usersList] = await db.query(
-      'SELECT id, name, email, role, avatar_url FROM users ORDER BY id DESC'
-    );
+    const [usersResult, coursesResult, enrollmentsResult, usersListResult] = await Promise.all([
+      db.query('SELECT COUNT(*) as count FROM users'),
+      db.query('SELECT COUNT(*) as count FROM courses'),
+      db.query('SELECT COUNT(*) as count FROM enrollments'),
+      db.query('SELECT id, name, email, role, avatar_url FROM users ORDER BY id DESC'),
+    ]);
+    const [usersCount] = usersResult;
+    const [coursesCount] = coursesResult;
+    const [enrollmentsCount] = enrollmentsResult;
+    const [usersList] = usersListResult;
 
-    res.json({
+    return res.json({
       stats: {
-        totalUsers: usersCount[0].count,
-        totalCourses: coursesCount[0].count,
-        totalEnrollments: enrollmentsCount[0].count,
+        totalUsers: Number(usersCount[0]?.count || 0),
+        totalCourses: Number(coursesCount[0]?.count || 0),
+        totalEnrollments: Number(enrollmentsCount[0]?.count || 0),
       },
-      users: usersList
+      users: usersList,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendAdminError(res);
   }
 };
 
@@ -38,19 +44,8 @@ exports.getAdminCourses = async (req, res) => {
       GROUP BY c.id, c.title, c.category, c.level, c.price, c.thumbnail_url, c.created_at, u.name, u.id
       ORDER BY c.id DESC
     `);
-    res.json(courses);
+    return res.json(courses);
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.adminDeleteCourse = async (req, res) => {
-  try {
-    const [course] = await db.query('SELECT id, title FROM courses WHERE id = ?', [req.params.id]);
-    if (course.length === 0) return res.status(404).json({ message: 'Course not found' });
-    await db.query('DELETE FROM courses WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Course deleted successfully', id: req.params.id });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendAdminError(res);
   }
 };
