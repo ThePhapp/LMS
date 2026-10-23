@@ -104,6 +104,45 @@ async function validateChapterForCourse(chapterId, courseId) {
   return numericChapterId;
 }
 
+function requiredLessonText(value, label, maxLength) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text || text.length > maxLength) {
+    throw new CourseAccessError(400, `${label} is required and must be at most ${maxLength} characters`);
+  }
+  return text;
+}
+
+function optionalLessonText(value, label, maxLength) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || value.length > maxLength) {
+    throw new CourseAccessError(400, `${label} must be at most ${maxLength} characters`);
+  }
+  return value;
+}
+
+function lessonOrder(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const order = Number(value);
+  if (!Number.isInteger(order) || order < 0) {
+    throw new CourseAccessError(400, 'Lesson order must be a non-negative integer');
+  }
+  return order;
+}
+
+function httpUrl(value, label) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || value.length > 500) {
+    throw new CourseAccessError(400, `${label} must be at most 500 characters`);
+  }
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+  } catch (_) {
+    throw new CourseAccessError(400, `${label} must be a valid HTTP(S) URL`);
+  }
+  return value;
+}
+
 async function processPackageUpload(uploadedFile) {
   const tempPackageDir = path.join(tempUploadDir, `lesson-pkg-${randomUUID()}`);
   let uploadedPackage = null;
@@ -146,7 +185,7 @@ exports.createLesson = async (req, res) => {
 
   try {
     const body = req.body || {};
-    const { chapter_id, title, content, video_url, lesson_order, duration } = body;
+    const { chapter_id } = body;
     const courseId = parseId(body.course_id, 'Course ID');
     const [course] = await db.query('SELECT lecturer_id FROM courses WHERE id = ?', [courseId]);
     if (course.length === 0) return res.status(404).json({ message: 'Course not found' });
@@ -154,6 +193,11 @@ exports.createLesson = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
     const validatedChapterId = await validateChapterForCourse(chapter_id, courseId);
+    const title = requiredLessonText(body.title, 'Title', 255);
+    const content = optionalLessonText(body.content, 'Content', 100_000);
+    const videoUrl = httpUrl(body.video_url, 'Video URL');
+    const order = lessonOrder(body.lesson_order);
+    const duration = optionalLessonText(body.duration, 'Duration', 50);
 
     if (req.file) {
       const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
@@ -182,14 +226,14 @@ exports.createLesson = async (req, res) => {
 
     const [result] = await db.query(
       'INSERT INTO lessons (course_id, chapter_id, title, content, video_url, file_url, file_name, file_type, lesson_order, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
-      [courseId, validatedChapterId, title, content, video_url || null, file_url, file_name, file_type, lesson_order || 0, duration || null]
+      [courseId, validatedChapterId, title, content, videoUrl, file_url, file_name, file_type, order, duration]
     );
 
     res.status(201).json({
-      id: result[0].id, course_id: courseId, chapter_id: validatedChapterId, title, content, video_url,
+      id: result[0].id, course_id: courseId, chapter_id: validatedChapterId, title, content, video_url: videoUrl,
       file_url: file_url ? (file_type === 'package' ? `/api/lessons/${result[0].id}/package-info` : `/api/files/lessons/${result[0].id}/access`) : null,
       file_access_url: file_url && file_type !== 'package' ? `/api/files/lessons/${result[0].id}/access` : null,
-      file_name, file_type, lesson_order: lesson_order || 0, duration,
+      file_name, file_type, lesson_order: order, duration,
       package_url: file_type === 'package' ? `/api/lessons/${result[0].id}/package-info` : null
     });
   } catch (error) {
@@ -209,7 +253,7 @@ exports.updateLesson = async (req, res) => {
   let replacedAsset = null;
   try {
     const body = req.body || {};
-    const { title, chapter_id, content, video_url, lesson_order, duration } = body;
+    const { chapter_id } = body;
     const lessonId = parseId(req.params.id, 'Lesson ID');
     const [lesson] = await db.query('SELECT l.*, c.lecturer_id FROM lessons l JOIN courses c ON l.course_id = c.id WHERE l.id = ?', [lessonId]);
     if (lesson.length === 0) return res.status(404).json({ message: 'Lesson not found' });
@@ -219,6 +263,19 @@ exports.updateLesson = async (req, res) => {
     const validatedChapterId = chapter_id === undefined
       ? lesson[0].chapter_id
       : await validateChapterForCourse(chapter_id, lesson[0].course_id);
+    const title = body.title === undefined
+      ? lesson[0].title
+      : requiredLessonText(body.title, 'Title', 255);
+    const content = body.content === undefined
+      ? lesson[0].content
+      : optionalLessonText(body.content, 'Content', 100_000);
+    const videoUrl = body.video_url === undefined
+      ? lesson[0].video_url
+      : httpUrl(body.video_url, 'Video URL');
+    const order = lessonOrder(body.lesson_order, lesson[0].lesson_order);
+    const duration = body.duration === undefined
+      ? lesson[0].duration
+      : optionalLessonText(body.duration, 'Duration', 50);
 
     let file_url = lesson[0].file_url, file_name = lesson[0].file_name, file_type = lesson[0].file_type;
     
@@ -251,13 +308,13 @@ exports.updateLesson = async (req, res) => {
     await db.query(
       'UPDATE lessons SET title=?, chapter_id=?, content=?, video_url=?, file_url=?, file_name=?, file_type=?, lesson_order=?, duration=? WHERE id=?',
       [
-        title || lesson[0].title,
+        title,
         validatedChapterId,
-        content || lesson[0].content,
-        video_url !== undefined ? video_url : lesson[0].video_url,
+        content,
+        videoUrl,
         file_url, file_name, file_type,
-        lesson_order !== undefined ? lesson_order : lesson[0].lesson_order,
-        duration || lesson[0].duration,
+        order,
+        duration,
         lessonId
       ]
     );

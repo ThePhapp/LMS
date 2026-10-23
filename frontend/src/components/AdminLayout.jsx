@@ -1,13 +1,11 @@
 import React, { useContext, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
-  Bell,
+  ArrowUpRight,
   BookOpen,
-  ChevronRight,
   LayoutDashboard,
   LogOut,
   Menu,
-  Search,
   X,
 } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
@@ -65,7 +63,6 @@ const AdminLayout = ({ children }) => {
             >
               {React.createElement(Icon, { size: 18, 'aria-hidden': true })}
               <span>{name}</span>
-              <ChevronRight className="admin-nav-chevron" size={14} aria-hidden="true" />
             </NavLink>
           ))}
         </nav>
@@ -84,16 +81,10 @@ const AdminLayout = ({ children }) => {
             <button type="button" className="admin-hamburger" onClick={() => setSidebarOpen(true)} aria-label="Mở menu quản trị">
               <Menu size={22} aria-hidden="true" />
             </button>
-            <div className="admin-search">
-              <Search className="admin-search-icon" size={16} aria-hidden="true" />
-              <input className="admin-search-input" type="search" placeholder="Tìm kiếm..." aria-label="Tìm kiếm trong trang quản trị" />
-            </div>
+            <strong className="admin-topbar-title">Lớp Học Đổi Mới</strong>
           </div>
           <div className="admin-topbar-right">
-            <button type="button" className="admin-icon-btn" aria-label="Thông báo">
-              <Bell size={19} aria-hidden="true" />
-              <span className="admin-notification-dot" aria-hidden="true" />
-            </button>
+            <Link to="/" className="admin-site-link">Xem website<ArrowUpRight size={15} aria-hidden="true" /></Link>
             <span className="admin-topbar-divider" aria-hidden="true" />
             <div className="admin-user-profile">
               <div className="admin-user-copy">

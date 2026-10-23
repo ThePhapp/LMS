@@ -421,3 +421,67 @@ test('gradebook progress counts only distinct completed lessons and converts pg 
   assert.match(progressQuery, /COUNT\(DISTINCT p\.lesson_id\)/);
   assert.match(progressQuery, /p\.completed = TRUE/);
 });
+
+test('student assignment lists fetch submissions in one bounded query', async () => {
+  const queries = [];
+  mockDb.query = async (sql, params) => {
+    const query = normalized(sql);
+    queries.push({ query, params });
+    if (query.startsWith('SELECT * FROM courses')) {
+      return [[{ id: 10, lecturer_id: 5 }]];
+    }
+    if (query.startsWith('SELECT id FROM enrollments')) return [[{ id: 50 }]];
+    if (query.startsWith('SELECT * FROM assignments')) {
+      return [[
+        { id: 11, course_id: 10, title: 'One' },
+        { id: 12, course_id: 10, title: 'Two' },
+      ]];
+    }
+    if (query.startsWith('SELECT id, assignment_id, score')) {
+      return [[
+        { id: 72, assignment_id: 12, score: 70, status: 'graded', submitted_at: '2026-10-02' },
+        { id: 71, assignment_id: 11, score: 90, status: 'graded', submitted_at: '2026-10-01' },
+      ]];
+    }
+    throw new Error(`Unexpected query: ${query}`);
+  };
+  const res = createResponse();
+
+  await controller.getAssignments({
+    params: { courseId: '10' },
+    query: {},
+    user: { id: 9, role: 'student' },
+  }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body[0].best_score, 90);
+  assert.equal(res.body[1].best_score, 70);
+  const submissionQueries = queries.filter(({ query }) => query.includes('FROM assignment_submissions'));
+  assert.equal(submissionQueries.length, 1);
+  assert.match(submissionQueries[0].query, /assignment_id = ANY\(\?::int\[\]\)/);
+  assert.deepEqual(submissionQueries[0].params, [9, [11, 12]]);
+});
+
+test('all student assignments avoid N+1 queries and retain empty submission state', async () => {
+  const queries = [];
+  mockDb.query = async (sql, params) => {
+    const query = normalized(sql);
+    queries.push({ query, params });
+    if (query.startsWith('SELECT a.*, c.title')) {
+      return [[
+        { id: 11, course_id: 10, title: 'One' },
+        { id: 12, course_id: 10, title: 'Two' },
+      ]];
+    }
+    if (query.startsWith('SELECT id, assignment_id, score')) return [[]];
+    throw new Error(`Unexpected query: ${query}`);
+  };
+  const res = createResponse();
+
+  await controller.getMyAllAssignments({ user: { id: 9, role: 'student' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(queries.length, 2);
+  assert.deepEqual(res.body.map(item => item.my_submissions), [[], []]);
+  assert.deepEqual(res.body.map(item => item.submission_count), [0, 0]);
+});

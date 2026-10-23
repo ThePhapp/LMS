@@ -10,6 +10,7 @@ import {
 } from '../src/services/authSession.js';
 import {
   ADMIN_ROLES,
+  canManageCourse,
   getRoleHomePath,
   hasAllowedRole,
   INSTRUCTOR_ROLES,
@@ -80,4 +81,13 @@ test('role helpers enforce student, instructor, and admin route boundaries', () 
   assert.equal(getRoleHomePath('lecturer'), '/instructor/dashboard');
   assert.equal(getRoleHomePath('admin'), '/admin');
   assert.equal(getRoleHomePath('unknown'), '/');
+});
+
+test('course management helpers compare normalized identities and reject other lecturers', () => {
+  const course = { id: 3, lecturer_id: 7 };
+  assert.equal(canManageCourse({ id: '7', role: 'lecturer' }, course), true);
+  assert.equal(canManageCourse({ id: 8, role: 'lecturer' }, course), false);
+  assert.equal(canManageCourse({ id: 1, role: 'admin' }, course), true);
+  assert.equal(canManageCourse({ id: 7, role: 'student' }, course), false);
+  assert.equal(canManageCourse(null, course), false);
 });

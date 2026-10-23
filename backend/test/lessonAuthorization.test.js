@@ -133,6 +133,72 @@ test('lesson creation rejects a chapter from another course before insert', asyn
   assert.equal(calls.some((sql) => /INSERT INTO lessons/i.test(sql)), false);
 });
 
+test('lesson creation rejects unsafe video URLs before insert', async () => {
+  const calls = [];
+  const db = {
+    async query(sql) {
+      calls.push(sql);
+      return [[{ lecturer_id: 4 }]];
+    },
+  };
+  const { createLesson } = loadController(db);
+  const res = createResponse();
+
+  await createLesson({
+    body: {
+      course_id: 12,
+      title: 'Unsafe link',
+      video_url: 'javascript:alert(document.domain)',
+    },
+    user: { id: 4, role: 'lecturer' },
+  }, res);
+
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.message, /valid HTTP\(S\) URL/i);
+  assert.equal(calls.some((sql) => /INSERT INTO lessons/i.test(sql)), false);
+});
+
+test('lesson update can intentionally clear optional text fields', async () => {
+  const calls = [];
+  const db = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (/SELECT l\.\*, c\.lecturer_id/.test(sql)) {
+        return [[{
+          id: 7,
+          course_id: 12,
+          chapter_id: 3,
+          lecturer_id: 4,
+          title: 'Existing',
+          content: 'Old content',
+          video_url: 'https://example.test/video',
+          lesson_order: 2,
+          duration: '45',
+          file_url: null,
+          file_name: null,
+          file_type: null,
+        }]];
+      }
+      return [[]];
+    },
+  };
+  const { updateLesson } = loadController(db);
+  const res = createResponse();
+
+  await updateLesson({
+    params: { id: '7' },
+    body: { content: '', video_url: '', duration: '' },
+    user: { id: 4, role: 'lecturer' },
+  }, res);
+
+  assert.equal(res.statusCode, 200);
+  const update = calls.find(({ sql }) => sql.startsWith('UPDATE lessons'));
+  assert.ok(update);
+  assert.equal(update.params[2], null);
+  assert.equal(update.params[3], null);
+  assert.equal(update.params[8], null);
+});
+
 test('only enrolled students may mark progress', async () => {
   const calls = [];
   const responses = [

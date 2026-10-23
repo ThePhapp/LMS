@@ -25,7 +25,7 @@ const Gradebook = () => {
       setCourse(courseRes.data);
       setData(gradesRes.data);
     } catch {
-      alert('Failed to load gradebook');
+      alert('Không thể tải sổ điểm');
       navigate('/courses');
     } finally {
       setLoading(false);
@@ -47,7 +47,7 @@ const Gradebook = () => {
       const assignment = data.assignments.find(a => a.id === assignmentId);
       setSelectedSubmissions({ assignment, items: res.data });
     } catch {
-      alert('Failed to fetch submissions');
+      alert('Không thể tải bài nộp');
     }
   };
 
@@ -60,7 +60,7 @@ const Gradebook = () => {
       fetchSubmissions(selectedSubmissions.assignment.id);
       fetchData(); // update main gradebook
     } catch {
-      alert('Failed to submit grade');
+      alert('Không thể lưu điểm');
     }
   };
 
@@ -91,19 +91,19 @@ const Gradebook = () => {
     document.body.removeChild(link);
   };
 
-  if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Loading Gradebook...</p></div>;
+  if (loading) return <div className="loading-wrapper"><div className="spinner" /><p>Đang tải sổ điểm...</p></div>;
 
   return (
     <div style={{ maxWidth: 1200, margin: '2rem auto', padding: '0 1.5rem' }}>
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: '1rem' }} onClick={() => navigate(`/courses/${id}`)}>
-        <ArrowLeft size={15} /> Back to Course
+        <ArrowLeft size={15} /> Quay lại khóa học
       </button>
 
       <div className="card" style={{ padding: '1.5rem 2rem', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              <ClipboardList size={16} /> Gradebook
+              <ClipboardList size={16} /> Sổ điểm
             </div>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{course?.title}</h1>
           </div>
@@ -118,7 +118,7 @@ const Gradebook = () => {
       {!selectedSubmissions ? (
         <div className="card">
           <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Student Overview</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Tổng quan học viên</h3>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -140,7 +140,7 @@ const Gradebook = () => {
                 {data.students.length === 0 ? (
                   <tr>
                     <td colSpan={data.assignments.length + 2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No students enrolled yet.
+                      Chưa có học viên đăng ký.
                     </td>
                   </tr>
                 ) : (
@@ -171,7 +171,7 @@ const Gradebook = () => {
       ) : (
         <div>
           <button className="btn btn-secondary btn-sm" onClick={() => setSelectedSubmissions(null)} style={{ marginBottom: '1rem' }}>
-            <ArrowLeft size={14} /> Back to Overview
+            <ArrowLeft size={14} /> Quay lại tổng quan
           </button>
           
           <div className="card" style={{ padding: '1.5rem' }}>
@@ -179,7 +179,7 @@ const Gradebook = () => {
               Submissions: {selectedSubmissions.assignment.title}
             </h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              Note: This list shows all attempts sorted by latest first. Only the highest score will reflect in the gradebook.
+              Danh sách hiển thị tất cả lượt nộp, mới nhất ở trên. Chỉ điểm cao nhất được tính vào sổ điểm.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -197,12 +197,12 @@ const Gradebook = () => {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         {sub.status === 'graded' ? (
-                          <div className="badge badge-success" style={{ fontSize: '1rem', padding: '0.3rem 0.8rem' }}>Score: {sub.score} / {selectedSubmissions.assignment.total_points}</div>
+                          <div className="badge badge-success" style={{ fontSize: '1rem', padding: '0.3rem 0.8rem' }}>Điểm: {sub.score} / {selectedSubmissions.assignment.total_points}</div>
                         ) : (
-                          <div className="badge badge-warning" style={{ fontSize: '0.9rem' }}><AlertCircle size={14} /> Needs Grading</div>
+                          <div className="badge badge-warning" style={{ fontSize: '0.9rem' }}><AlertCircle size={14} /> Chờ chấm</div>
                         )}
                         <button className="btn btn-primary btn-sm" onClick={() => setGradingSubId(sub.id)}>
-                          {sub.status === 'graded' ? 'Update Grade' : 'Grade Now'}
+                          {sub.status === 'graded' ? 'Cập nhật điểm' : 'Chấm bài'}
                         </button>
                       </div>
                     </div>
@@ -225,26 +225,26 @@ const Gradebook = () => {
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: 400 }}>
              <div className="modal-header">
-               <h2 className="modal-title">Enter Grade</h2>
+               <h2 className="modal-title">Nhập điểm</h2>
                <button className="btn btn-ghost btn-sm" onClick={() => setGradingSubId(null)}>✕</button>
              </div>
              <form onSubmit={submitGrade}>
                <div className="modal-body">
                  <div className="form-group">
-                   <label className="form-label">Score (Max: {selectedSubmissions.assignment.total_points})</label>
+                   <label className="form-label">Điểm (tối đa: {selectedSubmissions.assignment.total_points})</label>
                    <input type="number" className="form-input" required 
                      max={selectedSubmissions.assignment.total_points} min="0"
                      value={gradeForm.score} onChange={e => setGradeForm({ ...gradeForm, score: e.target.value })} />
                  </div>
                  <div className="form-group">
-                   <label className="form-label">Feedback (Optional)</label>
+                   <label className="form-label">Nhận xét (không bắt buộc)</label>
                    <textarea className="form-textarea" rows="3"
                      value={gradeForm.feedback} onChange={e => setGradeForm({ ...gradeForm, feedback: e.target.value })} />
                  </div>
                </div>
                <div className="modal-footer">
-                 <button type="button" className="btn btn-secondary" onClick={() => setGradingSubId(null)}>Cancel</button>
-                 <button type="submit" className="btn btn-primary">Save Grade</button>
+                 <button type="button" className="btn btn-secondary" onClick={() => setGradingSubId(null)}>Hủy</button>
+                 <button type="submit" className="btn btn-primary">Lưu điểm</button>
                </div>
              </form>
           </div>

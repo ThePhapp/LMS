@@ -80,16 +80,15 @@ Public registration luôn tạo `student`; role `lecturer`/`admin` do workflow q
 
 ```powershell
 cd backend
-npm test
-node --check server.js
+npm run check
 npm audit --omit=dev
 
 cd ../frontend
-node --test
-npm run lint
-npm run build
+npm run check
 npm audit --omit=dev
 ```
+
+GitHub Actions chạy cùng quality gate này trên mọi push và pull request.
 
 UI smoke dùng Playwright với fixture mock cho các flow không cần database fixture: landing/auth, dashboard, admin, learning, editor và assignment ở desktop/375px. Live DB integration/E2E cần PostgreSQL tenant DNS/credentials hợp lệ; không tự sửa credential hoặc chạy migration destructive.
 

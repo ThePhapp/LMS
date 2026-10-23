@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { CircleAlert, Inbox, RefreshCw } from 'lucide-react';
 
 export function PageLoadingState({ label = 'Đang tải nội dung' }) {
   return (
@@ -22,7 +22,8 @@ export function PageLoadingState({ label = 'Đang tải nội dung' }) {
 export function EmptyState({ children, action = null, page = false }) {
   return (
     <div className={`empty-state ${page ? 'empty-state-page' : 'empty-state-compact'}`}>
-      <p>{children}</p>
+      {page && <Inbox size={28} aria-hidden="true" />}
+      <div className="empty-state-copy">{children}</div>
       {action}
     </div>
   );
@@ -31,6 +32,7 @@ export function EmptyState({ children, action = null, page = false }) {
 export function ErrorState({ title, detail, onRetry }) {
   return (
     <div className="error-state" role="alert">
+      <CircleAlert size={20} aria-hidden="true" />
       <div>
         <p className="error-state-title">{title}</p>
         {detail && <p className="error-state-detail">{detail}</p>}

@@ -155,7 +155,7 @@ const CourseLearning = () => {
       await api.post(`/interactions/notes/${activeLesson.id}`, { content: notes });
     } catch(err) {
       console.error('Failed to save note', err);
-      alert('Failed to save note');
+      alert('Không thể lưu ghi chú');
     }
   };
 
@@ -167,7 +167,7 @@ const CourseLearning = () => {
       setComments(prev => [res.data, ...prev]);
       setNewComment('');
     } catch {
-      alert('Failed to post comment');
+      alert('Không thể gửi bình luận');
     }
   };
 
@@ -180,7 +180,7 @@ const CourseLearning = () => {
       setReplyContent('');
       setReplyingTo(null);
     } catch {
-      alert('Failed to post reply');
+      alert('Không thể gửi phản hồi');
     }
   };
 

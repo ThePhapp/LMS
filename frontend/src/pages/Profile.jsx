@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { useLang } from '../contexts/langContextValue';
 import api from '../services/api';
@@ -30,6 +30,10 @@ const Profile = () => {
   const initial = user?.name?.charAt(0)?.toUpperCase() || '?';
   const avatarSrc = avatarPreview || (user?.avatar_url ? `${assetUrl(user.avatar_url)}?t=${avatarTimestamp}` : null);
 
+  useEffect(() => () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+  }, [avatarPreview]);
+
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -59,8 +63,6 @@ const Profile = () => {
 
       const res = await api.patch('/auth/me', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-      // Update localStorage + context with full response data
-      localStorage.setItem('user', JSON.stringify(res.data));
       if (setUser) setUser(res.data);
 
       setSuccess(t('profile_save_success'));

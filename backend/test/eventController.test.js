@@ -118,3 +118,26 @@ test('lecturer cannot create an event for another lecturer course', async () => 
   assert.equal(res.statusCode, 403);
   assert.equal(insertCount, 0);
 });
+
+test('event links reject executable and malformed URL schemes', () => {
+  const controller = loadController({ query: async () => [[]] });
+  const base = {
+    title: 'Office hours',
+    start_time: '2026-10-12T08:00:00Z',
+    end_time: '2026-10-12T09:00:00Z',
+    event_type: 'lecture',
+  };
+
+  assert.match(
+    controller.validateEventInput({ ...base, meeting_link: 'javascript:alert(1)' }).error,
+    /HTTP or HTTPS/i,
+  );
+  assert.match(
+    controller.validateEventInput({ ...base, meeting_link: 'meet.example.test/room' }).error,
+    /valid absolute URL/i,
+  );
+  assert.equal(
+    controller.validateEventInput({ ...base, meeting_link: 'https://meet.example.test/room' }).error,
+    undefined,
+  );
+});

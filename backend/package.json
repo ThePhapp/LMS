@@ -7,6 +7,7 @@
     "dev": "nodemon --ignore uploads/ --ignore public/ server.js",
     "start": "node server.js",
     "test": "node --test",
+    "check": "npm test && node --check server.js",
     "db:migrate": "node migrate.js",
     "db:migrate:dry": "node migrate.js --dry-run",
     "db:status": "node migrate.js --status",

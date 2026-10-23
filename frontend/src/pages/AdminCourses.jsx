@@ -1,82 +1,70 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { BookOpen, Search, RefreshCw, Trash2, Users, FileText, Tag, AlertTriangle, X, ChevronDown, Eye } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
-import { motion as Motion } from 'framer-motion';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BookOpen, Eye, FileText, RefreshCw, Tag, Trash2, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api, { assetUrl } from '../services/api';
-import { ErrorState, PageLoadingState } from '../components/ui/Feedback';
+import { EmptyState, ErrorState, PageLoadingState } from '../components/ui/Feedback';
+import { MetricCard, PageHeader, SearchField, SelectMenu, StatusBadge } from '../components/ui/AppUI';
 
-const LEVEL_CONFIG = {
-  'Beginner':     { label: 'Cơ bản',    bg: '#D1FAE5', color: '#059669', border: '#6EE7B7' },
-  'Intermediate': { label: 'Trung cấp', bg: '#FEF3C7', color: '#D97706', border: '#FCD34D' },
-  'Advanced':     { label: 'Nâng cao',  bg: '#FEE2E2', color: '#DC2626', border: '#FCA5A5' },
+const LEVEL_OPTIONS = [
+  { value: 'all', label: 'Tất cả cấp độ' },
+  { value: 'Beginner', label: 'Cơ bản' },
+  { value: 'Intermediate', label: 'Trung cấp' },
+  { value: 'Advanced', label: 'Nâng cao' },
+];
+
+const LEVEL_LABELS = Object.fromEntries(LEVEL_OPTIONS.map((option) => [option.value, option.label]));
+
+const CATEGORY_LABELS = {
+  Science: 'Khoa học',
+  Language: 'Ngôn ngữ',
+  English: 'Tiếng Anh',
+  Vietnamese: 'Tiếng Việt',
+  Arts: 'Nghệ thuật',
+  Math: 'Toán',
+  General: 'Tổng hợp',
 };
 
-const CATEGORY_COLORS = {
-  'Science':  { bg: '#DBEAFE', color: '#2563EB' },
-  'Language': { bg: '#EDE9FE', color: '#7C3AED' },
-  'Arts':     { bg: '#FCE7F3', color: '#DB2777' },
-  'Math':     { bg: '#FEF9C3', color: '#CA8A04' },
-  'General':  { bg: '#F1F5F9', color: '#64748B' },
-};
+const DeleteModal = ({ course, onConfirm, onCancel, loading }) => {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !loading) onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [loading, onCancel]);
 
-const DeleteModal = ({ course, onConfirm, onCancel, loading }) => (
-  <div style={{
-    position: 'fixed', inset: 0, zIndex: 100,
-    background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
-  }}>
-    <Motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      style={{
-        background: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-        width: '100%', maxWidth: 420, padding: '2rem',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '1rem' }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <AlertTriangle size={22} color="#DC2626" />
+  return (
+  <div className="modal-overlay" role="presentation" onClick={onCancel}>
+    <div className="modal app-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-course-title" onClick={(event) => event.stopPropagation()}>
+      <div className="modal-header">
+        <div className="confirm-heading">
+          <span className="confirm-icon confirm-icon-danger"><AlertTriangle size={20} aria-hidden="true" /></span>
+          <div>
+            <h2 className="modal-title" id="delete-course-title">Xóa khóa học</h2>
+            <p>Hành động này không thể hoàn tác.</p>
+          </div>
         </div>
-        <div>
-          <h3 style={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>Xoá khoá học</h3>
-          <p style={{ color: '#64748B', fontSize: '0.85rem', marginTop: 2 }}>Hành động này không thể hoàn tác.</p>
-        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel} aria-label="Đóng hộp thoại"><X size={18} aria-hidden="true" /></button>
       </div>
-      <p style={{ color: '#334155', fontSize: '0.9rem', background: '#F8FAFC', borderRadius: 10, padding: '0.75rem 1rem', border: '1px solid #E2E8F0', marginBottom: '1.5rem' }}>
-        Bạn có chắc muốn xoá khoá học <strong>"{course?.title}"</strong>? Tất cả bài học, chương và dữ liệu liên quan sẽ bị xoá vĩnh viễn.
-      </p>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          style={{ padding: '0.55rem 1.25rem', borderRadius: 10, border: '1.5px solid #E2E8F0', background: '#fff', color: '#64748B', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.15s' }}
-        >
-          Huỷ bỏ
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={loading}
-          style={{
-            padding: '0.55rem 1.25rem', borderRadius: 10, border: 'none',
-            background: loading ? '#FCA5A5' : '#EF4444', color: '#fff',
-            fontWeight: 700, fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s',
-          }}
-        >
-          {loading ? <RefreshCw size={15} style={{ animation: 'spin .6s linear infinite' }} /> : <Trash2 size={15} />}
-          {loading ? 'Đang xoá...' : 'Xoá khoá học'}
-        </button>
+      <div className="modal-body"><p className="confirm-copy">Bạn có chắc muốn xóa <strong>“{course?.title}”</strong>? Tất cả bài học, chương và dữ liệu liên quan sẽ bị xóa vĩnh viễn.</p></div>
+      <div className="modal-footer">
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={loading}>Hủy</button>
+        <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={loading}><Trash2 size={15} aria-hidden="true" />{loading ? 'Đang xóa...' : 'Xóa khóa học'}</button>
       </div>
-    </Motion.div>
+    </div>
   </div>
+  );
+};
+
+const CourseThumbnail = ({ course }) => (
+  <span className="admin-course-thumbnail">
+    {course.thumbnail_url ? <img src={assetUrl(course.thumbnail_url)} alt="" loading="lazy" /> : <BookOpen size={18} aria-hidden="true" />}
+  </span>
 );
 
 const AdminCourses = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
-  const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -90,11 +78,10 @@ const AdminCourses = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/admin/courses');
-      setCourses(res.data);
-      setFiltered(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Không thể tải danh sách khoá học.');
+      const response = await api.get('/admin/courses');
+      setCourses(response.data || []);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Không thể tải danh sách khóa học.');
     } finally {
       setLoading(false);
     }
@@ -102,20 +89,24 @@ const AdminCourses = () => {
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
-  useEffect(() => {
-    let result = courses;
-    if (categoryFilter !== 'all') result = result.filter(c => c.category === categoryFilter);
-    if (levelFilter !== 'all') result = result.filter(c => c.level === levelFilter);
-    if (search) result = result.filter(c =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.lecturer_name.toLowerCase().includes(search.toLowerCase())
-    );
-    setFiltered(result);
-  }, [search, categoryFilter, levelFilter, courses]);
+  const categoryOptions = useMemo(() => [
+    { value: 'all', label: 'Tất cả danh mục' },
+    ...Array.from(new Set(courses.map((course) => course.category).filter(Boolean))).map((category) => ({ value: category, label: CATEGORY_LABELS[category] || category })),
+  ], [courses]);
 
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+  const filteredCourses = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return courses.filter((course) => {
+      const matchesCategory = categoryFilter === 'all' || course.category === categoryFilter;
+      const matchesLevel = levelFilter === 'all' || course.level === levelFilter;
+      const matchesSearch = !query || [course.title, course.lecturer_name].some((value) => String(value || '').toLowerCase().includes(query));
+      return matchesCategory && matchesLevel && matchesSearch;
+    });
+  }, [categoryFilter, courses, levelFilter, search]);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 3500);
   };
 
   const handleDelete = async () => {
@@ -123,290 +114,75 @@ const AdminCourses = () => {
     setDeleting(true);
     try {
       await api.delete(`/admin/courses/${deleteTarget.id}`);
-      setCourses(prev => prev.filter(c => c.id !== deleteTarget.id));
-      showToast(`Đã xoá khoá học "${deleteTarget.title}" thành công.`);
+      setCourses((current) => current.filter((course) => course.id !== deleteTarget.id));
       setDeleteTarget(null);
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Xoá thất bại. Vui lòng thử lại.', 'error');
+      showToast(`Đã xóa khóa học “${deleteTarget.title}”.`);
+    } catch (requestError) {
+      showToast(requestError.response?.data?.message || 'Xóa thất bại. Vui lòng thử lại.', 'error');
     } finally {
       setDeleting(false);
     }
   };
 
-  const categories = ['all', ...new Set(courses.map(c => c.category))];
-  const levels = ['all', 'Beginner', 'Intermediate', 'Advanced'];
+  const totalStudents = courses.reduce((sum, course) => sum + Number(course.student_count || 0), 0);
 
   return (
     <div className="admin-page admin-courses-page">
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <Motion.div
-            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: 'fixed', top: 20, right: 20, zIndex: 200,
-              background: toast.type === 'error' ? '#FEE2E2' : '#D1FAE5',
-              border: `1px solid ${toast.type === 'error' ? '#FCA5A5' : '#6EE7B7'}`,
-              color: toast.type === 'error' ? '#DC2626' : '#059669',
-              padding: '0.75rem 1.25rem', borderRadius: 12,
-              fontWeight: 600, fontSize: '0.875rem',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}
-          >
-            {toast.type === 'error' ? <AlertTriangle size={16} /> : '✓'} {toast.msg}
-          </Motion.div>
-        )}
-      </AnimatePresence>
+      {toast && <div className={`app-toast ${toast.type === 'error' ? 'app-toast-error' : ''}`} role="status">{toast.type === 'error' ? <AlertTriangle size={16} aria-hidden="true" /> : <span className="toast-check">✓</span>}{toast.message}</div>}
+      {deleteTarget && <DeleteModal course={deleteTarget} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} loading={deleting} />}
 
-      {/* Delete Modal */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <DeleteModal
-            course={deleteTarget}
-            onConfirm={handleDelete}
-            onCancel={() => setDeleteTarget(null)}
-            loading={deleting}
-          />
-        )}
-      </AnimatePresence>
+      <PageHeader
+        eyebrow="Quản trị hệ thống"
+        title="Quản lý khóa học"
+        description="Theo dõi, tìm kiếm và quản lý toàn bộ khóa học trong hệ thống."
+        action={<button type="button" className="btn btn-secondary" onClick={fetchCourses} disabled={loading}><RefreshCw size={16} className={loading ? 'icon-spin' : ''} aria-hidden="true" />Làm mới</button>}
+      />
 
-      {/* Header */}
-      <div className="admin-page-header" style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 4 }}>
-          Quản lý Khoá học
-        </h1>
-        <p style={{ color: '#64748B', fontSize: '0.9rem' }}>
-          Xem, tìm kiếm và xoá các khoá học trong hệ thống
-        </p>
+      <div className="metric-grid metric-grid-three">
+        <MetricCard icon={BookOpen} label="Tổng khóa học" value={courses.length} tone="indigo" />
+        <MetricCard icon={Eye} label="Đang hiển thị" value={filteredCourses.length} detail="theo bộ lọc hiện tại" tone="violet" />
+        <MetricCard icon={Users} label="Lượt đăng ký" value={totalStudents} detail="tổng toàn hệ thống" tone="teal" />
       </div>
 
-      {/* Summary Strip */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {[
-          { label: 'Tổng khoá học', value: courses.length, icon: <BookOpen size={16} color="#6366F1" />, bg: '#EEF2FF', color: '#6366F1' },
-          { label: 'Khoá học đang hiển thị', value: filtered.length, icon: <Eye size={16} color="#8B5CF6" />, bg: '#EDE9FE', color: '#8B5CF6' },
-          { label: 'Tổng học viên đăng ký', value: courses.reduce((s, c) => s + Number(c.student_count || 0), 0), icon: <Users size={16} color="#06B6D4" />, bg: '#CFFAFE', color: '#06B6D4' },
-        ].map(s => (
-          <div key={s.label} style={{
-            background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12,
-            padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: 12,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {s.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: '0.7rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>{s.value}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Card */}
-      <div className="admin-table-card" style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-
-        {/* Toolbar */}
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-            <input
-              type="text"
-              placeholder="Tìm tên khoá học, giảng viên..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width: '100%', padding: '0.45rem 0.875rem 0.45rem 2.2rem',
-                border: '1.5px solid #E2E8F0', borderRadius: 999,
-                fontSize: '0.85rem', fontFamily: 'inherit', color: '#0F172A',
-                outline: 'none', transition: 'border-color 0.2s',
-              }}
-              onFocus={e => e.target.style.borderColor = '#6366F1'}
-              onBlur={e => e.target.style.borderColor = '#E2E8F0'}
-            />
-          </div>
-
-          {/* Category filter */}
-          <div style={{ position: 'relative' }}>
-            <select
-              value={categoryFilter}
-              onChange={e => setCategoryFilter(e.target.value)}
-              style={{
-                padding: '0.45rem 2rem 0.45rem 0.875rem', border: '1.5px solid #E2E8F0',
-                borderRadius: 999, fontSize: '0.82rem', fontFamily: 'inherit', color: '#334155',
-                background: '#fff', cursor: 'pointer', appearance: 'none', outline: 'none',
-              }}
-            >
-              <option value="all">Tất cả danh mục</option>
-              {categories.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <ChevronDown size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', pointerEvents: 'none' }} />
-          </div>
-
-          {/* Level filter */}
-          <div style={{ position: 'relative' }}>
-            <select
-              value={levelFilter}
-              onChange={e => setLevelFilter(e.target.value)}
-              style={{
-                padding: '0.45rem 2rem 0.45rem 0.875rem', border: '1.5px solid #E2E8F0',
-                borderRadius: 999, fontSize: '0.82rem', fontFamily: 'inherit', color: '#334155',
-                background: '#fff', cursor: 'pointer', appearance: 'none', outline: 'none',
-              }}
-            >
-              {levels.map(l => <option key={l} value={l}>{l === 'all' ? 'Tất cả cấp độ' : (LEVEL_CONFIG[l]?.label || l)}</option>)}
-            </select>
-            <ChevronDown size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', pointerEvents: 'none' }} />
-          </div>
-
-          {/* Refresh */}
-          <button
-            onClick={fetchCourses}
-            style={{
-              width: 36, height: 36, borderRadius: '50%', border: '1.5px solid #E2E8F0',
-              background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#EEF2FF'; e.currentTarget.style.borderColor = '#6366F1'; e.currentTarget.style.color = '#6366F1'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B'; }}
-            title="Làm mới"
-          >
-            <RefreshCw size={14} />
-          </button>
+      <section className="app-section admin-courses-section">
+        <div className="admin-courses-toolbar">
+          <SearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm khóa học hoặc giảng viên..." label="Tìm khóa học hoặc giảng viên" />
+          <SelectMenu label="Lọc theo danh mục" value={categoryFilter} options={categoryOptions} onChange={setCategoryFilter} />
+          <SelectMenu label="Lọc theo cấp độ" value={levelFilter} options={LEVEL_OPTIONS} onChange={setLevelFilter} />
         </div>
 
-        {/* Table */}
-        {loading ? (
-          <PageLoadingState label="Đang tải danh sách khóa học" />
-        ) : error ? (
-          <ErrorState title="Không thể tải danh sách khóa học" detail={error} onRetry={fetchCourses} />
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  {['#', 'Khoá học', 'Giảng viên', 'Danh mục', 'Cấp độ', 'Học viên', 'Bài học', 'Thao tác'].map(col => (
-                    <th key={col} style={{
-                      padding: '0.875rem 1rem', textAlign: col === 'Thao tác' ? 'center' : 'left',
-                      fontSize: '0.7rem', fontWeight: 700, color: '#64748B',
-                      textTransform: 'uppercase', letterSpacing: '0.6px', whiteSpace: 'nowrap',
-                    }}>
-                      {col}
-                    </th>
+        {loading ? <PageLoadingState label="Đang tải danh sách khóa học" /> : error ? <ErrorState title="Không thể tải danh sách khóa học" detail={error} onRetry={fetchCourses} /> : filteredCourses.length === 0 ? <EmptyState title="Không tìm thấy khóa học" detail="Thử đổi từ khóa hoặc bộ lọc để xem thêm kết quả." /> : (
+          <>
+            <div className="admin-courses-table-wrap">
+              <table className="admin-courses-table">
+                <thead><tr><th>Khóa học</th><th>Giảng viên</th><th>Danh mục</th><th>Cấp độ</th><th>Học viên</th><th>Bài học</th><th className="table-actions-cell">Thao tác</th></tr></thead>
+                <tbody>
+                  {filteredCourses.map((course) => (
+                    <tr key={course.id}>
+                      <td><div className="admin-course-name"><CourseThumbnail course={course} /><div><strong>{course.title}</strong><span>{Number(course.price || 0) > 0 ? `${Number(course.price).toLocaleString('vi-VN')} ₫` : 'Mở đăng ký'}</span></div></div></td>
+                      <td>{course.lecturer_name || '—'}</td>
+                      <td><StatusBadge tone="neutral"><Tag size={12} aria-hidden="true" />{CATEGORY_LABELS[course.category] || course.category || 'Tổng hợp'}</StatusBadge></td>
+                      <td><StatusBadge tone={course.level === 'Advanced' ? 'danger' : course.level === 'Intermediate' ? 'warning' : 'success'}>{LEVEL_LABELS[course.level] || course.level || 'Cơ bản'}</StatusBadge></td>
+                      <td><span className="table-number"><Users size={14} aria-hidden="true" />{course.student_count || 0}</span></td>
+                      <td><span className="table-number"><FileText size={14} aria-hidden="true" />{course.lesson_count || 0}</span></td>
+                      <td className="table-actions-cell"><div className="table-actions"><button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate(`/courses/${course.id}`)} aria-label={`Xem ${course.title}`}><Eye size={15} aria-hidden="true" /></button><button type="button" className="btn btn-ghost btn-sm danger-action" onClick={() => setDeleteTarget(course)} aria-label={`Xóa ${course.title}`}><Trash2 size={15} aria-hidden="true" /></button></div></td>
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((course, idx) => {
-                  const lvlCfg = LEVEL_CONFIG[course.level] || LEVEL_CONFIG['Beginner'];
-                  const catCfg = CATEGORY_COLORS[course.category] || CATEGORY_COLORS['General'];
-                  return (
-                    <Motion.tr
-                      key={course.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: idx * 0.03 }}
-                      style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '0.875rem 1rem', color: '#94A3B8', fontSize: '0.8rem', fontWeight: 600, width: 40 }}>{idx + 1}</td>
-                      <td style={{ padding: '0.875rem 1rem', maxWidth: 280 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{
-                            width: 44, height: 44, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
-                            background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(99,102,241,0.2)',
-                          }}>
-                            {course.thumbnail_url
-                              ? <img src={assetUrl(course.thumbnail_url)} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              : <BookOpen size={18} color="rgba(255,255,255,0.8)" />
-                            }
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-                              {course.title}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 2 }}>
-                              {course.price > 0 ? `${Number(course.price).toLocaleString('vi-VN')} đ` : 'Miễn phí'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#334155', fontSize: '0.875rem' }}>
-                        {course.lecturer_name}
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, background: catCfg.bg, color: catCfg.color }}>
-                          <Tag size={10} />
-                          {course.category}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem' }}>
-                        <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, background: lvlCfg.bg, color: lvlCfg.color, border: `1px solid ${lvlCfg.border}` }}>
-                          {lvlCfg.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: '0.875rem' }}>
-                          <Users size={14} color="#64748B" />
-                          {course.student_count}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: '0.875rem' }}>
-                          <FileText size={14} color="#64748B" />
-                          {course.lesson_count}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                          <button
-                            onClick={() => navigate(`/courses/${course.id}`)}
-                            style={{
-                              padding: '0.35rem 0.7rem', borderRadius: 8, border: '1.5px solid #E2E8F0',
-                              background: '#fff', color: '#6366F1', fontSize: '0.78rem', fontWeight: 600,
-                              cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4,
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#EEF2FF'; e.currentTarget.style.borderColor = '#6366F1'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
-                            title="Xem khoá học"
-                          >
-                            <Eye size={13} /> Xem
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(course)}
-                            style={{
-                              padding: '0.35rem 0.7rem', borderRadius: 8, border: '1.5px solid #FCA5A5',
-                              background: '#FFF5F5', color: '#DC2626', fontSize: '0.78rem', fontWeight: 600,
-                              cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4,
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#FFF5F5'; }}
-                            title="Xoá khoá học"
-                          >
-                            <Trash2 size={13} /> Xoá
-                          </button>
-                        </div>
-                      </td>
-                    </Motion.tr>
-                  );
-                })}
-                {filtered.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan={8} style={{ padding: '4rem', textAlign: 'center', color: '#94A3B8' }}>
-                      <BookOpen size={40} style={{ margin: '0 auto 1rem', opacity: 0.3, display: 'block' }} />
-                      Không tìm thấy khoá học nào.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+            <div className="admin-courses-mobile-list">
+              {filteredCourses.map((course) => (
+                <article className="admin-course-mobile-card" key={course.id}>
+                  <div className="admin-course-mobile-heading"><CourseThumbnail course={course} /><div><strong>{course.title}</strong><span>{course.lecturer_name || 'Chưa có giảng viên'}</span></div></div>
+                  <div className="admin-course-mobile-meta"><StatusBadge tone="neutral">{CATEGORY_LABELS[course.category] || course.category || 'Tổng hợp'}</StatusBadge><StatusBadge tone={course.level === 'Advanced' ? 'danger' : course.level === 'Intermediate' ? 'warning' : 'success'}>{LEVEL_LABELS[course.level] || course.level || 'Cơ bản'}</StatusBadge><span>{course.student_count || 0} học viên</span></div>
+                  <div className="admin-course-mobile-actions"><button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate(`/courses/${course.id}`)}><Eye size={14} aria-hidden="true" />Xem</button><button type="button" className="btn btn-ghost btn-sm danger-action" onClick={() => setDeleteTarget(course)}><Trash2 size={14} aria-hidden="true" />Xóa</button></div>
+                </article>
+              ))}
+            </div>
+          </>
         )}
-      </div>
+      </section>
     </div>
   );
 };
