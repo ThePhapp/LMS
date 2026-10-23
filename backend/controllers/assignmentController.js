@@ -41,6 +41,38 @@ function serializeSubmission(submission) {
   };
 }
 
+async function attachStudentSubmissions(executor, assignments, studentId) {
+  if (!assignments.length) return assignments;
+  const assignmentIds = assignments.map(assignment => Number(assignment.id));
+  const [submissions] = await executor.query(
+    `SELECT id, assignment_id, score, status, submitted_at, attempt_number
+     FROM assignment_submissions
+     WHERE student_id = ? AND assignment_id = ANY(?::int[])
+     ORDER BY assignment_id, submitted_at DESC`,
+    [studentId, assignmentIds],
+  );
+  const submissionsByAssignment = new Map();
+  for (const submission of submissions) {
+    const key = Number(submission.assignment_id);
+    if (!submissionsByAssignment.has(key)) submissionsByAssignment.set(key, []);
+    submissionsByAssignment.get(key).push(submission);
+  }
+
+  for (const assignment of assignments) {
+    const ownSubmissions = submissionsByAssignment.get(Number(assignment.id)) || [];
+    assignment.my_submissions = ownSubmissions;
+    assignment.submission_count = ownSubmissions.length;
+    if (ownSubmissions.length > 0) {
+      assignment.best_score = Math.max(
+        ...ownSubmissions.filter(item => item.score !== null).map(item => Number(item.score)),
+        0,
+      );
+      assignment.latest_status = ownSubmissions[0].status;
+    }
+  }
+  return assignments;
+}
+
 function positiveInteger(value, fieldName) {
   const number = Number(value);
   if (!Number.isInteger(number) || number <= 0) {
@@ -276,22 +308,7 @@ exports.getAssignments = async (req, res) => {
     const [assignments] = await db.query(query, params);
 
     if (req.user.role === 'student') {
-      for (const assignment of assignments) {
-        const [submissions] = await db.query(
-          `SELECT id, score, status, submitted_at, attempt_number FROM assignment_submissions
-           WHERE assignment_id = ? AND student_id = ? ORDER BY submitted_at DESC`,
-          [assignment.id, req.user.id]
-        );
-        assignment.my_submissions = submissions;
-        assignment.submission_count = submissions.length;
-        if (submissions.length > 0) {
-          assignment.best_score = Math.max(
-            ...submissions.filter(item => item.score !== null).map(item => Number(item.score)),
-            0
-          );
-          assignment.latest_status = submissions[0].status;
-        }
-      }
+      await attachStudentSubmissions(db, assignments, req.user.id);
     }
 
     return res.json(assignments);
@@ -665,22 +682,7 @@ exports.getMyAllAssignments = async (req, res) => {
       [req.user.id]
     );
 
-    for (const assignment of assignments) {
-      const [submissions] = await db.query(
-        `SELECT id, score, status, submitted_at, attempt_number FROM assignment_submissions
-         WHERE assignment_id = ? AND student_id = ? ORDER BY submitted_at DESC`,
-        [assignment.id, req.user.id]
-      );
-      assignment.my_submissions = submissions;
-      assignment.submission_count = submissions.length;
-      if (submissions.length > 0) {
-        assignment.best_score = Math.max(
-          ...submissions.filter(item => item.score !== null).map(item => Number(item.score)),
-          0
-        );
-        assignment.latest_status = submissions[0].status;
-      }
-    }
+    await attachStudentSubmissions(db, assignments, req.user.id);
 
     return res.json(assignments);
   } catch (error) {
